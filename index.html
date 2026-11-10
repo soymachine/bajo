@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cuatro Cuerdas · sala de ensayo para bajo</title>
+  <meta name="description" content="Genera líneas de bajo de blues, rock y pop sobre cualquier progresión de acordes y tócalas con acompañamiento.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317120f'/%3E%3Cg stroke='%23f0a63a' stroke-linecap='round'%3E%3Cpath d='M6 9h20' stroke-width='1.5'/%3E%3Cpath d='M6 14h20' stroke-width='2'/%3E%3Cpath d='M6 19h20' stroke-width='2.6'/%3E%3Cpath d='M6 24h20' stroke-width='3.2'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="strings" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div>
+        <h1>Cuatro Cuerdas</h1>
+        <p>sala de ensayo para bajo</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button data-view="tocar" class="active">Tocar</button>
+      <button data-view="diapason">Diapasón</button>
+      <button data-view="afinador">Afinador</button>
+    </nav>
+    <div class="streak" id="streak" title="Días seguidos practicando"></div>
+  </header>
+
+  <!-- ============ TOCAR ============ -->
+  <main id="view-tocar" class="view active">
+    <section class="transport">
+      <button id="play" class="play" aria-label="Reproducir">
+        <svg viewBox="0 0 24 24" class="ico-play"><path d="M7 4v16l14-8z"/></svg>
+        <svg viewBox="0 0 24 24" class="ico-stop"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+        <span>Tocar</span>
+      </button>
+      <div class="tempo">
+        <label for="tempo">Tempo</label>
+        <button id="tempoDown" class="step" aria-label="Más lento">−</button>
+        <input id="tempo" type="range" min="40" max="200" step="1">
+        <button id="tempoUp" class="step" aria-label="Más rápido">+</button>
+        <output id="tempoVal">100</output><small>ppm</small>
+      </div>
+      <label class="switch"><input type="checkbox" id="loop"><span>Repetir</span></label>
+      <label class="switch"><input type="checkbox" id="countin"><span>Cuenta 1-2-3-4</span></label>
+      <label class="switch hot"><input type="checkbox" id="mute"><span>El bajo lo toco yo</span></label>
+      <div class="mixer">
+        <label>Bajo<input type="range" id="volBass" min="0" max="1" step=".05"></label>
+        <label>Batería<input type="range" id="volDrums" min="0" max="1" step=".05"></label>
+        <label>Acordes<input type="range" id="volChords" min="0" max="1" step=".05"></label>
+      </div>
+    </section>
+
+    <section class="setup">
+      <div class="plate">
+        <h2><b>1</b> Progresión</h2>
+        <div class="row">
+          <select id="preset" aria-label="Progresión"></select>
+          <select id="key" aria-label="Tonalidad"></select>
+        </div>
+        <textarea id="chords" rows="3" spellcheck="false" aria-label="Acordes"></textarea>
+        <p class="hint" id="chordHint">Escribe tus acordes separando los compases con <kbd>|</kbd>. Dos acordes en un compás: <kbd>C Am | F G</kbd></p>
+        <div class="row">
+          <button id="apply" class="btn">Aplicar acordes</button>
+          <button id="save" class="btn ghost">Guardar</button>
+          <button id="del" class="btn ghost" hidden>Borrar</button>
+        </div>
+      </div>
+      <div class="plate">
+        <h2><b>2</b> Estilo</h2>
+        <div class="chips" id="styles"></div>
+        <p class="hint" id="styleDesc"></p>
+      </div>
+      <div class="plate narrow">
+        <h2><b>3</b> Nivel</h2>
+        <div class="seg" id="levels">
+          <button data-level="1">Fácil</button>
+          <button data-level="2">Medio</button>
+          <button data-level="3">Avanzado</button>
+        </div>
+        <button id="reroll" class="btn big">
+          <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Otra línea
+        </button>
+        <p class="hint">Cada pulsación inventa una línea distinta para los mismos acordes.</p>
+      </div>
+    </section>
+
+    <section class="now" id="now">
+      <div class="now-chord">
+        <small>Acorde</small>
+        <strong id="nowChord">—</strong>
+        <span>luego <b id="nowNext">—</b></span>
+      </div>
+      <div class="now-note">
+        <small>Nota</small>
+        <strong id="nowNote">—</strong>
+        <span id="nowRole">pulsa Tocar</span>
+      </div>
+      <div class="now-board" id="nowBoard"></div>
+    </section>
+
+    <section class="sheet">
+      <div class="sheet-head">
+        <h2 id="sheetTitle"></h2>
+        <div class="opts">
+          <label><input type="checkbox" id="optStaff">Partitura</label>
+          <label><input type="checkbox" id="optTab">Tablatura</label>
+          <label><input type="checkbox" id="optNames">Nombres</label>
+          <label><input type="checkbox" id="optLatin">Do Re Mi</label>
+        </div>
+      </div>
+      <div id="score" class="score"></div>
+    </section>
+  </main>
+
+  <!-- ============ DIAPASÓN ============ -->
+  <main id="view-diapason" class="view">
+    <section class="plate wide">
+      <div class="game-head">
+        <div>
+          <div class="seg">
+            <button data-mode="name" class="active">Nombra la nota</button>
+            <button data-mode="find">Encuentra la nota</button>
+          </div>
+          <div class="seg small">
+            <button data-frets="5" class="active">Trastes 0–5</button>
+            <button data-frets="7">0–7</button>
+            <button data-frets="12">0–12</button>
+          </div>
+        </div>
+        <dl class="stats">
+          <div><dt>Aciertos</dt><dd><span id="gOk">0</span>/<span id="gTries">0</span></dd></div>
+          <div><dt>Racha</dt><dd id="gStreak">0</dd></div>
+          <div><dt>Récord</dt><dd id="gBest">0</dd></div>
+        </dl>
+      </div>
+      <p class="prompt" id="gamePrompt"></p>
+      <div id="gameBoard" class="board"></div>
+      <div id="gameAnswers" class="answers"></div>
+    </section>
+  </main>
+
+  <!-- ============ AFINADOR ============ -->
+  <main id="view-afinador" class="view">
+    <div class="tuner-grid">
+      <section class="plate">
+        <h2>Tonos de referencia</h2>
+        <p class="hint">Pulsa una cuerda, escucha y afina de oído.</p>
+        <div id="tunerStrings" class="string-btns"></div>
+      </section>
+      <section class="plate" id="tuner">
+        <h2>Afinador con micrófono</h2>
+        <div class="meter">
+          <svg viewBox="0 0 300 170">
+            <path d="M30 150 A120 120 0 0 1 270 150" class="arc"/>
+            <path d="M139.5 30.5 A120 120 0 0 1 160.5 30.5" class="arc ok"/>
+            <g class="ticks"><path d="M150 30v14M65 65l10 10M235 65l-10 10M30 150h14M270 150h-14"/></g>
+            <text x="34" y="168">♭</text><text x="258" y="168">♯</text>
+            <line id="needle" x1="150" y1="150" x2="150" y2="42"/>
+            <circle cx="150" cy="150" r="8"/>
+          </svg>
+          <strong id="tunerNote">—</strong>
+          <span id="tunerCents">&nbsp;</span>
+        </div>
+        <p class="tuner-msg" id="tunerMsg">Activa el micrófono y toca una cuerda al aire.</p>
+        <button id="micBtn" class="btn big">Activar micrófono</button>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <p>En iPad o iPhone, si no suena nada, quita el modo silencio y sube el volumen. <kbd>Espacio</kbd> = tocar / parar.</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
