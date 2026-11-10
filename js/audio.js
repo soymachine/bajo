@@ -16,6 +16,7 @@ export class Engine {
     this.events = [];
     this.total = 16;
     this.onEnd = null;
+    this.onLoop = null;
   }
 
   init() {
@@ -87,6 +88,7 @@ export class Engine {
       if (this.idx >= this.events.length) {
         if (!this.loop) { endAbs = (this.loopN + 1) * this.total; break; }
         this.idx = 0; this.loopN++;
+        if (this.onLoop) this.onLoop(this.loopN);
       }
       const ev = this.events[this.idx];
       const abs = this.loopN * this.total + ev.beat;
@@ -111,6 +113,12 @@ export class Engine {
     const cur = this.absBeat();
     fn();
     this.t0 = this.ctx.currentTime - this.T(cur);
+  }
+  /** Cambia el tempo justo en el tiempo absoluto indicado (p. ej. al empezar una vuelta). */
+  changeTempoAt(bpm, abs) {
+    const at = this.t0 + this.T(abs);
+    this.tempo = bpm;
+    this.t0 = at - this.T(abs);
   }
   setTempo(bpm) { this.retime(() => { this.tempo = bpm; }); }
 

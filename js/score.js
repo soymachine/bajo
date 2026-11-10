@@ -28,7 +28,8 @@ function restPieces(from, to) {
 
 export function renderScore(container, song, opts) {
   container.innerHTML = '';
-  const W = Math.max(520, container.clientWidth);
+  const Z = opts.zoom || 1;
+  const W = Math.max(520, container.clientWidth / Z);
   const perLine = opts.perLine;
   const barW = (W - LEFT - 10) / perLine, inner = barW - PAD_L - PAD_R;
   const xOf = (col, beat) => LEFT + col * barW + PAD_L + (beat / 4) * inner;
@@ -48,7 +49,14 @@ export function renderScore(container, song, opts) {
 
   for (let first = 0; first < nBars; first += perLine) {
     const count = Math.min(perLine, nBars - first);
-    const sys = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: 'system' }, container);
+    const sys = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: W * Z, height: H * Z, class: 'system' }, container);
+    if (opts.onBar) {
+      sys.addEventListener('click', e => {
+        const r = sys.getBoundingClientRect();
+        const c = Math.floor(((e.clientX - r.left) * W / r.width - LEFT) / barW);
+        if (c >= 0 && c < count) opts.onBar(first + c);
+      });
+    }
     const xEnd = LEFT + count * barW;
     systems.push(sys);
 
@@ -185,6 +193,14 @@ export function renderScore(container, song, opts) {
 
   let curNote = -1, curBar = -1, curSys = null;
   const api = {
+    /** Resalta los compases del tramo elegido (a..b) o lo quita (null). */
+    setRange(a, b) {
+      barEls.forEach((el, i) => {
+        const inside = a !== null && i >= a && i <= b;
+        el.classList.toggle('sel', inside);
+        el.classList.toggle('out', a !== null && !inside);
+      });
+    },
     /** Marca compás, nota y cursor para el tiempo dado. Devuelve el índice de la nota actual. */
     setBeat(beat) {
       const bar = Math.floor(beat / 4);

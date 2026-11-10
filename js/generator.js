@@ -199,7 +199,7 @@ const ROLES = { 0: 'fundamental', 2: 'segunda', 3: 'tercera menor', 4: 'tercera'
   7: 'quinta', 9: 'sexta', 10: 'séptima', 11: 'séptima mayor' };
 
 export function generate(prog, styleId, level, seed) {
-  const style = STYLES[styleId];
+  const style = typeof styleId === 'string' ? STYLES[styleId] : styleId;
   const rand = rng(seed + 1);
   const segs = [];
   prog.bars.forEach((chords, bar) => {

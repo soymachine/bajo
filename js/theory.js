@@ -88,18 +88,26 @@ export function realize(roman, key) {
     });
 }
 
-/** Elige cuerda y traste para cada nota, manteniendo la mano en una zona cómoda. */
+/**
+ * Elige cuerda y traste para cada nota. La mano cubre cuatro trastes (un dedo por
+ * traste): se prefieren las notas dentro de esa zona y se penalizan los saltos.
+ */
 export function fingering(midis) {
-  let pos = 2;
+  let base = 1;
   return midis.map(m => {
     let best = null;
     OPEN.forEach((open, s) => {
       const f = m - open;
       if (f < 0 || f > 14) return;
-      const cost = (f === 0 ? 1.2 : Math.abs(f - pos)) + f * 0.15;
+      let cost;
+      if (f === 0) cost = .3;
+      else if (f >= base && f <= base + 3) cost = f * .05;
+      else cost = 1 + 1.5 * (f < base ? base - f : f - base - 3) + f * .05;
       if (!best || cost < best.cost) best = { string: s, fret: f, cost };
     });
-    if (best.fret > 0) pos = best.fret;
+    if (best.fret > 0 && (best.fret < base || best.fret > base + 3)) {
+      base = best.fret < base ? best.fret : best.fret - 3;
+    }
     return { string: best.string, fret: best.fret };
   });
 }

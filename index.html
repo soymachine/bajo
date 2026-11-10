@@ -5,7 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cuatro Cuerdas · sala de ensayo para bajo</title>
   <meta name="description" content="Genera líneas de bajo de blues, rock y pop sobre cualquier progresión de acordes y tócalas con acompañamiento.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2317120f'/%3E%3Cg stroke='%23f0a63a' stroke-linecap='round'%3E%3Cpath d='M6 9h20' stroke-width='1.5'/%3E%3Cpath d='M6 14h20' stroke-width='2'/%3E%3Cpath d='M6 19h20' stroke-width='2.6'/%3E%3Cpath d='M6 24h20' stroke-width='3.2'/%3E%3C/g%3E%3C/svg%3E">
+  <meta name="theme-color" content="#17120f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cuatro Cuerdas">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
@@ -21,15 +28,48 @@
       </div>
     </div>
     <nav class="tabs" role="tablist">
-      <button data-view="tocar" class="active">Tocar</button>
+      <button data-view="hoy" class="active">Hoy</button>
+      <button data-view="tocar">Tocar</button>
       <button data-view="diapason">Diapasón</button>
       <button data-view="afinador">Afinador</button>
     </nav>
     <div class="streak" id="streak" title="Días seguidos practicando"></div>
   </header>
 
+  <!-- ============ HOY ============ -->
+  <main id="view-hoy" class="view active">
+    <section class="today">
+      <div class="today-head">
+        <p class="date" id="todayDate"></p>
+        <h2>Tu práctica de hoy</h2>
+        <p id="todayMsg">Tres pasos, unos quince minutos. Empieza por el primero y deja que la música haga el resto.</p>
+      </div>
+      <ol class="routine" id="routine"></ol>
+    </section>
+
+    <div class="today-grid">
+      <section class="plate">
+        <h2>Diario de práctica</h2>
+        <div class="diary" id="diary"></div>
+        <p class="hint" id="diaryTotals"></p>
+      </section>
+      <section class="plate">
+        <h2>Más ejercicios</h2>
+        <div class="row lib-key">
+          <label for="exKey">Tono para escalas y arpegios</label>
+          <select id="exKey"></select>
+        </div>
+        <div class="chips" id="library"></div>
+      </section>
+    </div>
+    <p class="install" id="installTip" hidden>
+      <b>Consejo:</b> en el iPad pulsa <b>Compartir</b> → <b>Añadir a pantalla de inicio</b>.
+      Tendrás Cuatro Cuerdas como una app más, y funcionará también sin internet.
+    </p>
+  </main>
+
   <!-- ============ TOCAR ============ -->
-  <main id="view-tocar" class="view active">
+  <main id="view-tocar" class="view">
     <section class="transport">
       <button id="play" class="play" aria-label="Reproducir">
         <svg viewBox="0 0 24 24" class="ico-play"><path d="M7 4v16l14-8z"/></svg>
@@ -51,6 +91,20 @@
         <label>Batería<input type="range" id="volDrums" min="0" max="1" step=".05"></label>
         <label>Acordes<input type="range" id="volChords" min="0" max="1" step=".05"></label>
       </div>
+      <button id="stageBtn" class="stage-btn" title="Pantalla grande (tecla F)">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Pantalla grande</span>
+      </button>
+    </section>
+
+    <section class="exbar" id="exbar" hidden>
+      <div class="ex-label" id="exLabel"></div>
+      <div class="ex-time" id="exTimeBox">
+        <span id="exTime"></span>
+        <div class="bar"><i id="exProg"></i></div>
+      </div>
+      <button id="exNext" class="btn">Siguiente paso →</button>
+      <button id="exQuit" class="btn ghost">Salir</button>
     </section>
 
     <section class="setup">
@@ -100,6 +154,29 @@
         <span id="nowRole">pulsa Tocar</span>
       </div>
       <div class="now-board" id="nowBoard"></div>
+    </section>
+
+    <section class="practice">
+      <div class="pgroup">
+        <span class="plabel">Tramo</span>
+        <button id="pickRange" class="btn ghost sm">
+          <svg viewBox="0 0 24 24"><path d="M5 4v16M19 4v16M9 12h6M9 12l2-2M9 12l2 2M15 12l-2-2M15 12l-2 2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Elegir compases
+        </button>
+        <span id="rangeTxt" class="ptext">Toda la canción</span>
+        <button id="clearRange" class="btn ghost sm" hidden>Toda la canción</button>
+      </div>
+      <div class="pgroup">
+        <label class="switch"><input type="checkbox" id="rampOn"><span>Acelerar cada vuelta</span></label>
+        <select id="rampStep" aria-label="Aumento por vuelta"></select>
+        <span class="ptext">hasta</span>
+        <div class="numstep">
+          <button id="rampDown" aria-label="Menos">−</button>
+          <output id="rampTo">120</output>
+          <button id="rampUp" aria-label="Más">+</button>
+        </div>
+        <span class="ptext">ppm</span>
+      </div>
     </section>
 
     <section class="sheet">
@@ -172,8 +249,15 @@
   </main>
 
   <footer>
-    <p>En iPad o iPhone, si no suena nada, quita el modo silencio y sube el volumen. <kbd>Espacio</kbd> = tocar / parar.</p>
+    <p>En iPad o iPhone, si no suena nada, quita el modo silencio y sube el volumen.</p>
+    <p class="keys"><b>Pedal o teclado:</b>
+      <kbd>Espacio</kbd> o <kbd>→</kbd> tocar / parar ·
+      <kbd>←</kbd> volver a empezar ·
+      <kbd>+</kbd> <kbd>−</kbd> tempo ·
+      <kbd>F</kbd> pantalla grande</p>
   </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script type="module" src="js/app.js"></script>
 </body>
