@@ -12,7 +12,7 @@ export const SONGS = [
       { name: 'Intro', chords: 'Ebm | Db | Ebm | Db', times: 1 },
       { name: 'Estrofa', chords: 'Ebm | Db | Ebm | Db', times: 2 },
       { name: 'Pre-estribillo', chords: 'B | Db | B | Db', times: 1 },
-      { name: 'Estribillo', chords: 'Ebm | Db | Ebm | Db', times: 2 },
+      { name: 'Estribillo', chords: 'Ebm | Db | B | Db', times: 2 },
     ] },
   { id: 'standbyme', title: 'Stand By Me', artist: 'Ben E. King', year: 1961, genre: 'Soul',
     key: 'A', tempo: 118, style: 'pop',
@@ -103,7 +103,7 @@ export const SONGS = [
     feel: 'Notas largas y mucho espacio. Toca poco y bonito.',
     sections: [
       { name: 'Estrofa', chords: 'Cmaj7 | F | Cmaj7 | F', times: 2 },
-      { name: 'Puente', chords: 'F Am | Dm F | G | C E7', times: 1 },
+      { name: 'Puente', chords: 'F Am/E | Dm7 Am/C | G | G7', times: 1 },
       { name: 'Estribillo', chords: 'F G | C E7 | F G | C E7', times: 1 },
     ] },
   { id: 'wonderful', title: 'Wonderful Tonight', artist: 'Eric Clapton', year: 1977, genre: 'Pop',
