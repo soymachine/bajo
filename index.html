@@ -30,6 +30,7 @@
     <nav class="tabs" role="tablist">
       <button data-view="hoy" class="active">Hoy</button>
       <button data-view="tocar">Tocar</button>
+      <button data-view="canciones">Canciones</button>
       <button data-view="diapason">Diapasón</button>
       <button data-view="afinador">Afinador</button>
     </nav>
@@ -192,6 +193,33 @@
       <div id="score" class="score"></div>
     </section>
   </main>
+
+  <!-- ============ CANCIONES ============ -->
+  <main id="view-canciones" class="view">
+    <section class="songs-head">
+      <div>
+        <h2>Canciones míticas</h2>
+        <p>Los acordes y la estructura de clásicos del blues, el rock y el pop. Elige una y la web
+          te prepara una línea de bajo en su estilo para tocarla con la banda.</p>
+      </div>
+      <div class="chips" id="genres"></div>
+    </section>
+    <div class="song-grid" id="songGrid"></div>
+    <p class="hint fine">Las líneas de bajo originales tienen derechos de autor, así que aquí no se copian
+      nota a nota: la web inventa una línea nueva sobre los acordes de la canción. Algunas progresiones están
+      simplificadas para practicar.</p>
+  </main>
+
+  <dialog id="songDlg" class="song-dlg">
+    <button id="songClose" class="close" aria-label="Cerrar">×</button>
+    <div class="song-head" id="songHead"></div>
+    <h3>Partes de la canción</h3>
+    <ol class="sections" id="songSections"></ol>
+    <button id="songPlay" class="btn big">
+      <svg viewBox="0 0 24 24"><path d="M7 4v16l14-8z" fill="currentColor"/></svg>
+      Tocar la canción entera
+    </button>
+  </dialog>
 
   <!-- ============ DIAPASÓN ============ -->
   <main id="view-diapason" class="view">

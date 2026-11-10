@@ -478,3 +478,95 @@ footer .keys { margin-top: 4px; }
   .stage .now strong { font-size: 3.6rem; }
   .exbar { flex-wrap: wrap; }
 }
+
+/* ---------- canciones míticas ---------- */
+.songs-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin: 6px 0 22px; flex-wrap: wrap; }
+.songs-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 2.6rem; line-height: 1.05; text-shadow: 3px 3px 0 var(--red); }
+.songs-head p { margin: 8px 0 0; max-width: 620px; color: var(--muted); font-size: 1.02rem; }
+.song-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 30px 26px; }
+.song {
+  position: relative; border: 0; padding: 0; background: none; text-align: left;
+  animation: rise .45s ease both;
+}
+.song .disc {
+  position: absolute; top: 4%; right: 4%; width: 92%; aspect-ratio: 1; border-radius: 50%; z-index: 0;
+  background:
+    radial-gradient(circle, var(--amber) 0 13%, #111 13.5% 16%, transparent 16.5%),
+    repeating-radial-gradient(circle, #151515 0 2px, #222 2px 4px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .6);
+  transition: transform .35s cubic-bezier(.2, .8, .3, 1.2);
+}
+.song:hover .disc, .song:focus-visible .disc { transform: translateX(22%) rotate(40deg); }
+.song .sleeve { position: relative; z-index: 1; }
+.song .meta {
+  display: flex; justify-content: space-between; margin-top: 10px; font-family: var(--cond);
+  text-transform: uppercase; letter-spacing: .1em; font-size: .8rem; color: var(--muted);
+}
+
+.sleeve {
+  --c1: hsl(var(--h) 55% 38%); --c2: hsl(calc(var(--h) + 40) 70% 55%);
+  aspect-ratio: 1; border-radius: 6px; padding: 14px 16px; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end; color: #fff8ea;
+  background: var(--c1); box-shadow: 0 10px 24px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(255, 255, 255, .08);
+  position: relative;
+}
+.sleeve::before { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.sleeve.v0::before { background: radial-gradient(circle at 78% 26%, var(--c2) 0 18%, transparent 18.5% 27%, color-mix(in srgb, var(--c2) 60%, transparent) 27.5% 31%, transparent 31.5%); }
+.sleeve.v1::before { background: repeating-linear-gradient(-28deg, transparent 0 18px, color-mix(in srgb, var(--c2) 70%, transparent) 18px 30px); mask-image: linear-gradient(transparent 5%, #000 30%, transparent 75%); -webkit-mask-image: linear-gradient(transparent 5%, #000 30%, transparent 75%); }
+.sleeve.v2::before { background: radial-gradient(color-mix(in srgb, var(--c2) 85%, transparent) 30%, transparent 32%) 0 0 / 16px 16px; mask-image: radial-gradient(circle at 75% 25%, #000 25%, transparent 60%); -webkit-mask-image: radial-gradient(circle at 75% 25%, #000 25%, transparent 60%); }
+.sleeve.g-blues { --c1: hsl(212 45% calc(24% + var(--h) / 40 * 1%)); --c2: hsl(200 60% 60%); }
+.sleeve.g-rnr { --c1: hsl(4 62% calc(36% + var(--h) / 60 * 1%)); --c2: #f4ead5; }
+.sleeve.g-rock { --c1: #1e1915; --c2: hsl(calc(30 + var(--h) / 20) 85% 55%); }
+.sleeve.g-pop { --c1: hsl(calc(160 + var(--h) / 18) 40% 34%); --c2: hsl(45 90% 62%); }
+.sleeve.g-soul { --c1: hsl(calc(25 + var(--h) / 40) 65% 42%); --c2: hsl(350 70% 30%); }
+.sleeve > * { position: relative; }
+.sleeve .yr { position: absolute; top: 12px; left: 14px; font-family: var(--cond); font-weight: 700; letter-spacing: .2em; font-size: .78rem; opacity: .85; }
+.sleeve b { font-family: var(--display); font-weight: 400; font-size: 1.45rem; line-height: 1.05; text-shadow: 2px 2px 0 rgba(0, 0, 0, .35); }
+.sleeve .ar { margin-top: 4px; font-family: var(--cond); font-weight: 600; text-transform: uppercase; letter-spacing: .1em; font-size: .78rem; opacity: .9; }
+.sleeve.big { width: 200px; flex: none; }
+.sleeve.big b { font-size: 1.6rem; }
+.hint.fine { margin-top: 30px; max-width: 760px; }
+
+.song-dlg {
+  width: min(860px, 92vw); max-height: 88vh; padding: 28px 30px 30px; border-radius: 22px;
+  border: 1px solid var(--line); background: linear-gradient(var(--panel2), var(--bg2)); color: var(--cream);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .7);
+}
+.song-dlg[open] { animation: rise .3s ease both; }
+.song-dlg::backdrop { background: rgba(10, 7, 5, .72); backdrop-filter: blur(3px); }
+.song-dlg .close {
+  position: absolute; top: 14px; right: 16px; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line); background: #1c1511; font-size: 1.6rem; line-height: 1;
+}
+.song-head { display: flex; gap: 26px; align-items: flex-start; }
+.song-head .kick { margin: 0; font-family: var(--cond); text-transform: uppercase; letter-spacing: .18em; font-size: .82rem; color: var(--amber); }
+.song-head h2 { margin: 4px 0 2px; font-family: var(--display); font-weight: 400; font-size: 2.3rem; line-height: 1.05; }
+.song-head .by { margin: 0; font-size: 1.1rem; color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.facts span { background: #15100d; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: .88rem; color: var(--muted); }
+.facts b { color: var(--cream); }
+.feel { margin: 0; line-height: 1.45; }
+.song-dlg h3 { margin: 24px 0 10px; font-family: var(--cond); text-transform: uppercase; letter-spacing: .14em; font-size: 1rem; }
+.sections { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 10px; }
+.sections li {
+  display: grid; grid-template-columns: 170px 1fr auto; align-items: center; gap: 14px;
+  background: #15100d; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px;
+}
+.sections li small { color: var(--amber); font-weight: 700; }
+.sections .bars { display: flex; flex-wrap: wrap; gap: 5px; }
+.sections .bars span {
+  font-family: var(--display); font-size: .95rem; color: var(--ink); background: var(--paper);
+  border-radius: 6px; padding: 3px 9px; min-width: 42px; text-align: center;
+}
+.song-dlg .btn.big { margin: 0; }
+.song-dlg .btn.big svg { width: 22px; height: 22px; }
+
+.mark { font: 700 12.5px var(--cond); letter-spacing: .14em; text-transform: uppercase; fill: #1f6f62; }
+.markline { stroke: #1f6f62; stroke-width: 2.5; }
+
+@media (max-width: 1100px) {
+  .song-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 26px 20px; }
+  .sections li { grid-template-columns: 1fr auto; }
+  .sections li .bars { grid-column: 1 / -1; grid-row: 2; }
+  .sleeve.big { width: 150px; }
+}

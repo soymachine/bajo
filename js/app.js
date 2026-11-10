@@ -6,6 +6,7 @@ import { createFretboard } from './fretboard.js';
 import { initGame } from './fretgame.js';
 import { initTuner } from './tuner.js';
 import { LIBRARY, makeExercise, exerciseTitle, routineFor, dayNumber } from './exercises.js';
+import { SONGS, GENRES, songPreset } from './songs.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -41,7 +42,8 @@ const fmtTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 if (S.daily.date !== today()) { S.daily = { date: today(), secs: [0, 0, 0] }; S.step = null; }
 
 const allPresets = () => PRESETS.flatMap(g => g.items);
-const findPreset = id => allPresets().find(p => p.id === id) || S.custom.find(p => p.id === id);
+const findPreset = id => (String(id).startsWith('song:') ? songPreset(id)
+  : allPresets().find(p => p.id === id) || S.custom.find(p => p.id === id));
 const formatText = t => {
   const bars = t.split(/[|\n]/).map(b => b.trim()).filter(Boolean);
   const lines = [];
@@ -63,6 +65,7 @@ function fillPresets() {
   const sel = $('#preset');
   sel.innerHTML = '';
   const groups = [...PRESETS];
+  groups.push({ group: 'Canciones míticas', items: SONGS.map(x => ({ id: 'song:' + x.id, name: `${x.title} · ${x.artist}` })) });
   if (S.custom.length) groups.push({ group: 'Mis progresiones', items: S.custom });
   for (const g of groups) {
     const og = document.createElement('optgroup');
@@ -72,6 +75,7 @@ function fillPresets() {
   }
   sel.appendChild(new Option('— acordes propios —', 'custom'));
   sel.value = findPreset(S.preset) ? S.preset : 'custom';
+  if (sel.value !== S.preset) sel.value = String(S.preset).startsWith('song:') ? S.preset.split(':').slice(0, 2).join(':') : 'custom';
   $('#del').hidden = !S.custom.some(p => p.id === S.preset);
 }
 const keyOption = k => new Option(`${pretty(k)} · ${noteName(pcOf(k), k.includes('b'), true)}`, k);
@@ -120,8 +124,12 @@ function applyPreset(id) {
   S.text = p.roman ? realize(p.roman, p.key) : p.text;
   S.seed = 0;
   $('#preset').value = id;
+  if ($('#preset').value !== id) {
+    // una parte de una canción: en el selector se muestra la canción
+    $('#preset').value = id.startsWith('song:') ? id.split(':').slice(0, 2).join(':') : 'custom';
+  }
   $('#key').value = S.key;
-  if (p.style) { S.style = p.style; setTempo(STYLES[p.style].tempo); }
+  if (p.style) { S.style = p.style; setTempo(p.tempo || STYLES[p.style].tempo); }
   $('#del').hidden = !S.custom.some(c => c.id === id);
   rebuild();
 }
@@ -190,6 +198,7 @@ function draw() {
     staff: S.staff, tab: S.tab || !S.staff, names: S.names, latin: S.latin, zoom,
     perLine: wide || !(dense || song.bars.some(b => b.segs.length > 1)) ? 4 : 2,
     onBar: pickBar,
+    marks: S.mode === 'song' ? (findPreset(S.preset) || {}).marks : null,
   });
   el.classList.toggle('picking', !!picking);
   if (range) score.setRange(range[0], range[1]);
@@ -378,6 +387,78 @@ function fillLibrary() {
   }
 }
 $('#exKey').onchange = e => { S.exKey = e.target.value; store.save(); };
+
+// ---------- vista CANCIONES ----------
+let genre = 'Todas';
+const hueOf = id => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const GENRE_CLASS = { Blues: 'g-blues', "Rock'n'roll": 'g-rnr', Rock: 'g-rock', Pop: 'g-pop', Soul: 'g-soul' };
+function sleeve(song, big) {
+  const v = hueOf(song.id) % 3;
+  return `<div class="sleeve ${GENRE_CLASS[song.genre]} v${v}${big ? ' big' : ''}" style="--h:${hueOf(song.id)}">
+      <span class="yr">${song.year}</span>
+      <b>${song.title}</b>
+      <span class="ar">${song.artist}</span>
+    </div>`;
+}
+function renderSongs() {
+  const f = $('#genres');
+  f.innerHTML = '';
+  for (const g of ['Todas', ...GENRES]) {
+    const b = document.createElement('button');
+    b.textContent = g;
+    b.classList.toggle('active', g === genre);
+    b.onclick = () => { genre = g; renderSongs(); };
+    f.appendChild(b);
+  }
+  const grid = $('#songGrid');
+  grid.innerHTML = '';
+  SONGS.filter(x => genre === 'Todas' || x.genre === genre).forEach((x, i) => {
+    const card = document.createElement('button');
+    card.className = 'song';
+    card.style.animationDelay = i * 35 + 'ms';
+    card.innerHTML = `${sleeve(x)}<div class="disc"></div>
+      <div class="meta"><span>${x.genre}</span><span>${pretty(x.key)} · ${x.tempo} ppm</span></div>`;
+    card.onclick = () => openSong(x);
+    grid.appendChild(card);
+  });
+}
+function openSong(x) {
+  const d = $('#songDlg');
+  const keyName = noteName(pcOf(x.key), x.key.includes('b'), S.latin);
+  const minor = x.sections[0].chords.trim().split(/\s+/)[0].includes('m');
+  const total = x.sections.reduce((n, s) => n + s.chords.split('|').length * s.times, 0);
+  $('#songHead').innerHTML = `${sleeve(x, true)}
+    <div>
+      <p class="kick">${x.genre} · ${x.year}</p>
+      <h2>${x.title}</h2>
+      <p class="by">${x.artist}</p>
+      <p class="facts"><span>Tono <b>${keyName}${minor ? ' menor' : ''}</b></span><span><b>${x.tempo}</b> ppm</span><span>Estilo <b>${STYLES[x.style].name}</b></span><span><b>${total}</b> compases</span></p>
+      <p class="feel">${x.feel}</p>
+    </div>`;
+  const list = $('#songSections');
+  list.innerHTML = '';
+  x.sections.forEach((sec, i) => {
+    const li = document.createElement('li');
+    const chips = sec.chords.split('|').map(b => `<span>${pretty(b.trim())}</span>`).join('');
+    li.innerHTML = `<div><b>${sec.name}</b>${sec.times > 1 ? ` <small>×${sec.times}</small>` : ''}</div><div class="bars">${chips}</div>`;
+    const b = document.createElement('button');
+    b.className = 'btn ghost sm';
+    b.textContent = 'Practicar';
+    b.onclick = () => playSong(x, i);
+    li.appendChild(b);
+    list.appendChild(li);
+  });
+  $('#songPlay').onclick = () => playSong(x, null);
+  if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+}
+function playSong(x, idx) {
+  const d = $('#songDlg');
+  if (d.close) d.close(); else d.removeAttribute('open');
+  applyPreset(idx === null ? `song:${x.id}` : `song:${x.id}:${idx}`);
+  showView('tocar');
+}
+$('#songClose').onclick = () => { const d = $('#songDlg'); if (d.close) d.close(); else d.removeAttribute('open'); };
+$('#songDlg').addEventListener('click', e => { if (e.target.id === 'songDlg') e.target.close(); });
 
 // ---------- panel "ahora" ----------
 function chordAt(bar, beat) {
@@ -575,7 +656,7 @@ bindCheck('#optNames', () => S.names, v => { S.names = v; draw(); });
 bindCheck('#optLatin', () => S.latin, v => {
   S.latin = v;
   board = createFretboard($('#nowBoard'), { frets: 12, latin: S.latin });
-  rebuild(); game.refresh(); tuner.refresh(); renderToday();
+  rebuild(); game.refresh(); tuner.refresh(); renderToday(); renderSongs();
 });
 
 $('#preset').onchange = e => { if (e.target.value !== 'custom') applyPreset(e.target.value); };
@@ -619,6 +700,7 @@ function showView(name) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
   if (name === 'tocar' && song) draw();
   if (name === 'hoy') renderToday();
+  if (name === 'canciones') renderSongs();
   window.scrollTo({ top: 0 });
 }
 $$('.tabs button').forEach(b => b.onclick = () => showView(b.dataset.view));
@@ -649,4 +731,5 @@ setTempo(S.tempo);
 rebuild();
 renderStreak();
 renderToday();
+renderSongs();
 requestAnimationFrame(frame);

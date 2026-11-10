@@ -35,8 +35,9 @@ export function renderScore(container, song, opts) {
   const xOf = (col, beat) => LEFT + col * barW + PAD_L + (beat / 4) * inner;
 
   // distribución vertical
-  let y = 34;
-  const chordY = 26;
+  const top = opts.marks ? 18 : 0;
+  let y = 34 + top;
+  const chordY = 26 + top;
   let staffTop = null, namesY = null, tabTop = null;
   if (opts.staff) { staffTop = y + 40; y = staffTop + 4 * GAP + 30; }
   if (opts.names) { namesY = y + 4; y += 20; }
@@ -85,6 +86,15 @@ export function renderScore(container, song, opts) {
       }
     }
     svg('text', { x: 14, y: chordY - 8, class: 'barnum' }, sys, first + 1);
+    if (opts.marks) {
+      for (let c = 0; c < count; c++) {
+        const m = opts.marks[first + c];
+        if (!m) continue;
+        const x = LEFT + c * barW + 6;
+        svg('path', { d: `M${x} 4v18`, class: 'markline' }, sys);
+        svg('text', { x: x + 6, y: 15, class: 'mark' }, sys, m);
+      }
+    }
 
     for (let c = 0; c < count; c++) {
       const b = first + c;

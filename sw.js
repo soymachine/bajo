@@ -1,10 +1,10 @@
 // Service worker: guarda la web para que funcione sin conexión.
 // Primero intenta la red (así siempre se ve la última versión) y, si no hay, usa la copia.
-const CACHE = 'cuatro-cuerdas-v2';
+const CACHE = 'cuatro-cuerdas-v3';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/app.js', 'js/theory.js', 'js/generator.js', 'js/audio.js', 'js/score.js',
-  'js/fretboard.js', 'js/fretgame.js', 'js/tuner.js', 'js/exercises.js',
+  'js/fretboard.js', 'js/fretgame.js', 'js/tuner.js', 'js/exercises.js', 'js/songs.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png',
 ];
 
