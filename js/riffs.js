@@ -1,0 +1,224 @@
+// «Mis riffs»: líneas de bajo escritas a mano en una cuadrícula tipo tablatura.
+// Se guardan solo en el navegador (localStorage), nunca en el repositorio.
+import { parseProgression, STYLES, ROLES } from './generator.js';
+import { OPEN, pretty } from './theory.js';
+
+const MAX_FRET = 12;
+const STRINGS = ['Sol', 'Re', 'La', 'Mi'];
+const WRITTEN = [4, 3, 2, 1.5, 1, .75, .5, .25]; // duraciones que la partitura sabe escribir
+const METRO = { name: 'Solo metrónomo', swing: false, tempo: 90, sub: 4, drums: { rim: [0, 1, 2, 3] }, comp: [] };
+
+const emptyBar = res => Array(res).fill(0);
+const isNote = st => Array.isArray(st);
+
+export function newRiff() {
+  return { id: 'r' + Date.now(), name: 'Riff nuevo', tempo: 100, style: 'rock', res: 8, chords: '', bars: [emptyBar(8)] };
+}
+
+/** Riff de ejemplo (original) para enseñar cómo funciona el editor. */
+export function exampleRiff() {
+  const up = [[2, 0], 0, [2, 4], 0, [1, 2], 0, [1, 4], 0];
+  const down = [[1, 5], 0, [1, 4], 0, [1, 2], 0, [2, 4], 0];
+  return { id: 'r-ejemplo', name: 'Ejemplo: boogie en La', tempo: 110, style: 'blues', res: 8, chords: 'A7 | A7', bars: [up, down] };
+}
+
+/** Convierte un riff en una «canción» con el mismo formato que generate(). */
+export function riffSong(riff) {
+  const stepLen = 4 / riff.res;
+  const prog = parseProgression(riff.chords || '');
+  const blank = { name: '', rootPc: 0, bassPc: 0, flats: false, tones: [], minor: false };
+  const segs = [], bars = [], notes = [];
+  riff.bars.forEach((steps, b) => {
+    const chords = prog.bars.length ? prog.bars[b % prog.bars.length] : [blank];
+    const n = chords.length;
+    const lens = n === 1 ? [4] : n === 2 ? [2, 2] : n === 3 ? [2, 1, 1] : [1, 1, 1, 1];
+    let beat = 0;
+    const mine = chords.map((chord, i) => { const s = { bar: b, beat, len: lens[i], chord, run: 0 }; beat += lens[i]; return s; });
+    segs.push(...mine);
+    bars.push({ segs: mine });
+    steps.forEach((st, i) => {
+      if (!isNote(st)) return;
+      let j = i + 1;
+      while (j < steps.length && steps[j] === 0) j++;
+      const dur = (j - i) * stepLen, at = i * stepLen;
+      const chord = mine.filter(s => s.beat <= at + .001).pop().chord;
+      const midi = OPEN[st[0]] + st[1];
+      const iv = ((midi - chord.bassPc) % 12 + 12) % 12;
+      notes.push({
+        bar: b, beat: at, at: b * 4 + at, dur, vdur: WRITTEN.find(d => d <= dur + .001),
+        midi, string: st[0], fret: st[1], chord, flats: chord.flats,
+        role: chord.name ? (ROLES[iv] || 'nota de paso') : '',
+      });
+    });
+  });
+  const base = STYLES[riff.style] || METRO;
+  const style = { ...base, name: riff.name, desc: '', comp: prog.bars.length ? base.comp : [] };
+  return { bars, segs, notes, total: bars.length * 4, style, styleId: 'riff' };
+}
+
+function resize(riff, res) {
+  if (res === riff.res) return;
+  riff.bars = riff.bars.map(bar => {
+    const out = emptyBar(res);
+    if (res > riff.res) bar.forEach((st, i) => { out[i * 2] = st; });
+    else bar.forEach((st, i) => { if (i % 2 === 0) out[i / 2] = st; });
+    return out;
+  });
+  riff.res = res;
+}
+
+export function initRiffs(root, { store, engine, getLatin, onPlay }) {
+  const $ = s => root.querySelector(s);
+  const S = store.data;
+  if (!S.riffs) S.riffs = [exampleRiff()];
+  let cur = null, brush = 0;
+
+  const save = () => store.save();
+  const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---------- lista ----------
+  function renderList() {
+    const list = $('#riffList');
+    list.innerHTML = '';
+    $('#riffEmpty').hidden = S.riffs.length > 0;
+    for (const r of S.riffs) {
+      const count = r.bars.reduce((n, b) => n + b.filter(isNote).length, 0);
+      const card = el('div', 'riff-card' + (cur && cur.id === r.id ? ' active' : ''));
+      card.innerHTML = `
+        <div>
+          <b>${esc(r.name)}</b>
+          <small>${r.bars.length} ${r.bars.length === 1 ? 'compás' : 'compases'} · ${count} notas · ${r.tempo} ppm${r.chords ? ' · ' + esc(pretty(r.chords)) : ''}</small>
+        </div>`;
+      const play = el('button', 'btn', 'Tocar');
+      play.onclick = () => onPlay(r);
+      const edit = el('button', 'btn ghost', 'Editar');
+      edit.onclick = () => open(r);
+      card.append(play, edit);
+      list.appendChild(card);
+    }
+  }
+
+  // ---------- editor ----------
+  function open(r) {
+    cur = r;
+    $('#riffEditor').hidden = false;
+    $('#riffName').value = r.name;
+    $('#riffChords').value = r.chords;
+    $('#riffStyle').value = STYLES[r.style] ? r.style : 'metro';
+    renderMeta(); renderBrush(); renderBars(); renderList();
+    $('#riffEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function renderMeta() {
+    $('#riffTempo').textContent = cur.tempo;
+    root.querySelectorAll('[data-res]').forEach(b => b.classList.toggle('active', +b.dataset.res === cur.res));
+    const prog = parseProgression(cur.chords || '');
+    const hint = $('#riffChordHint');
+    hint.classList.toggle('error', prog.errors.length > 0);
+    hint.textContent = prog.errors.length
+      ? `No entiendo: ${prog.errors.join(', ')}. Ejemplos: A7, Dm, F#m7, Bb.`
+      : 'Opcional. Un acorde por compás, separados con | (si hay menos acordes que compases, se repiten). Sin acordes suena solo la batería.';
+  }
+  function renderBrush() {
+    const box = $('#riffBrush');
+    box.innerHTML = '';
+    for (let f = 0; f <= MAX_FRET; f++) {
+      const b = el('button', brush === f ? 'active' : '', String(f));
+      b.onclick = () => { brush = f; renderBrush(); };
+      box.appendChild(b);
+    }
+    const e = el('button', 'erase' + (brush === 'erase' ? ' active' : ''), 'Borrar');
+    e.onclick = () => { brush = 'erase'; renderBrush(); };
+    box.appendChild(e);
+  }
+  function renderBars() {
+    const box = $('#riffBars');
+    box.innerHTML = '';
+    const labels = cur.res === 8 ? ['1', 'y', '2', 'y', '3', 'y', '4', 'y']
+      : ['1', '', 'y', '', '2', '', 'y', '', '3', '', 'y', '', '4', '', 'y', ''];
+    cur.bars.forEach((steps, b) => {
+      const wrap = el('div', 'rbar');
+      const head = el('div', 'rbar-head', `<b>Compás ${b + 1}</b>`);
+      const dup = el('button', 'btn ghost sm', 'Duplicar');
+      dup.onclick = () => { cur.bars.splice(b + 1, 0, steps.map(st => (isNote(st) ? [...st] : st))); changed(); };
+      const clr = el('button', 'btn ghost sm', 'Vaciar');
+      clr.onclick = () => { cur.bars[b] = emptyBar(cur.res); changed(); };
+      const del = el('button', 'btn ghost sm', 'Quitar');
+      del.disabled = cur.bars.length === 1;
+      del.onclick = () => { cur.bars.splice(b, 1); changed(); };
+      head.append(dup, clr, del);
+      const grid = el('div', 'rgrid r' + cur.res);
+      grid.style.gridTemplateColumns = `44px repeat(${cur.res}, 1fr)`;
+      grid.appendChild(el('span', 'rlab'));
+      labels.forEach((l, i) => grid.appendChild(el('span', 'rbeat' + (i % (cur.res / 4) === 0 ? ' strong' : ''), l)));
+      // hasta dónde suena cada nota, para sombrear las casillas siguientes
+      const hold = steps.map(() => -1);
+      let last = null;
+      steps.forEach((st, i) => {
+        if (isNote(st)) last = st[0]; else if (st === 'r') last = null; else if (last !== null) hold[i] = last;
+      });
+      STRINGS.forEach((name, s) => {
+        grid.appendChild(el('span', 'rlab', getLatin() ? name : 'GDAE'[s]));
+        steps.forEach((st, i) => {
+          const on = isNote(st) && st[0] === s;
+          const c = el('button', 'rcell' + (on ? ' on' : hold[i] === s ? ' hold' : '') + (i % (cur.res / 4) === 0 ? ' beat' : ''), on ? String(st[1]) : '');
+          c.setAttribute('aria-label', `${name}, paso ${i + 1}`);
+          c.onclick = () => setCell(b, s, i);
+          grid.appendChild(c);
+        });
+      });
+      grid.appendChild(el('span', 'rlab rest', 'Silencio'));
+      steps.forEach((st, i) => {
+        const c = el('button', 'rcell rest' + (st === 'r' ? ' on' : '') + (i % (cur.res / 4) === 0 ? ' beat' : ''), st === 'r' ? '✕' : '');
+        c.setAttribute('aria-label', `Silencio, paso ${i + 1}`);
+        c.onclick = () => { cur.bars[b][i] = st === 'r' ? 0 : 'r'; changed(); };
+        grid.appendChild(c);
+      });
+      wrap.append(head, grid);
+      box.appendChild(wrap);
+    });
+  }
+  function setCell(b, s, i) {
+    const st = cur.bars[b][i];
+    if (brush === 'erase' || (isNote(st) && st[0] === s && st[1] === brush)) cur.bars[b][i] = 0;
+    else {
+      cur.bars[b][i] = [s, brush];
+      engine.pluck(OPEN[s] + brush, .5);
+    }
+    changed();
+  }
+  function changed() { save(); renderBars(); renderList(); }
+
+  $('#riffNew').onclick = () => { const r = newRiff(); S.riffs.unshift(r); save(); open(r); $('#riffName').select(); };
+  $('#riffName').oninput = e => { cur.name = e.target.value.slice(0, 50) || 'Riff sin nombre'; save(); renderList(); };
+  $('#riffChords').oninput = e => { cur.chords = e.target.value; save(); renderMeta(); renderList(); };
+  $('#riffStyle').onchange = e => { cur.style = e.target.value; save(); };
+  $('#riffTempoDown').onclick = () => { cur.tempo = Math.max(40, cur.tempo - 4); save(); renderMeta(); renderList(); };
+  $('#riffTempoUp').onclick = () => { cur.tempo = Math.min(200, cur.tempo + 4); save(); renderMeta(); renderList(); };
+  root.querySelectorAll('[data-res]').forEach(b => b.onclick = () => {
+    const res = +b.dataset.res;
+    const loses = res < cur.res && cur.bars.some(bar => bar.some((st, i) => st !== 0 && i % 2));
+    if (loses && !confirm('Al pasar a corcheas se perderán las notas que están en semicorcheas intermedias. ¿Continuar?')) return;
+    resize(cur, res); save(); renderMeta(); renderBars();
+  });
+  $('#riffAddBar').onclick = () => { cur.bars.push(emptyBar(cur.res)); changed(); };
+  $('#riffPlay').onclick = () => onPlay(cur);
+  $('#riffClose').onclick = () => { cur = null; $('#riffEditor').hidden = true; renderList(); };
+  $('#riffDelete').onclick = () => {
+    if (!confirm(`¿Borrar «${cur.name}»? No se puede deshacer.`)) return;
+    S.riffs = S.riffs.filter(r => r !== cur);
+    cur = null; save();
+    $('#riffEditor').hidden = true;
+    renderList();
+  };
+
+  const sel = $('#riffStyle');
+  sel.appendChild(new Option('Solo metrónomo', 'metro'));
+  for (const [id, st] of Object.entries(STYLES)) sel.appendChild(new Option(`Batería de ${st.name}`, id));
+
+  renderList();
+  return {
+    render() { renderList(); if (cur) renderBars(); },
+    edit(id) { const r = S.riffs.find(x => x.id === id); if (r) open(r); },
+  };
+}

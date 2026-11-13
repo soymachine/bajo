@@ -195,7 +195,7 @@ function walkBar(chord, level, changes, rand) {
   return out;
 }
 
-const ROLES = { 0: 'fundamental', 2: 'segunda', 3: 'tercera menor', 4: 'tercera', 5: 'cuarta',
+export const ROLES = { 0: 'fundamental', 2: 'segunda', 3: 'tercera menor', 4: 'tercera', 5: 'cuarta',
   7: 'quinta', 9: 'sexta', 10: 'séptima', 11: 'séptima mayor' };
 
 export function generate(prog, styleId, level, seed) {

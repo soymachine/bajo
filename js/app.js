@@ -7,6 +7,7 @@ import { initGame } from './fretgame.js';
 import { initTuner } from './tuner.js';
 import { LIBRARY, makeExercise, exerciseTitle, routineFor, dayNumber } from './exercises.js';
 import { SONGS, GENRES, songPreset } from './songs.js';
+import { initRiffs, riffSong } from './riffs.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -142,9 +143,13 @@ function loadExercise(spec, step = null) {
 
 // ---------- generar y dibujar ----------
 function rebuild() {
-  document.body.classList.toggle('exmode', S.mode === 'ex');
+  const riff = S.mode === 'riff' ? (S.riffs || []).find(r => r.id === S.riffId) : null;
+  if (S.mode === 'riff' && !riff) S.mode = 'song';
+  document.body.classList.toggle('exmode', S.mode !== 'song');
   if (S.mode === 'ex') {
     song = makeExercise(S.ex);
+  } else if (riff) {
+    song = riffSong(riff);
   } else {
     const prog = parseProgression(S.text);
     const hint = $('#chordHint');
@@ -170,6 +175,9 @@ function rebuild() {
   $('#styleDesc').textContent = song.style.desc;
   if (S.mode === 'ex') {
     $('#sheetTitle').innerHTML = `${exerciseTitle(S.ex, S.latin)} <span>Ejercicio · ${song.bars.length} compases</span>`;
+  } else if (riff) {
+    $('#sheetTitle').textContent = riff.name;
+    $('#sheetTitle').insertAdjacentHTML('beforeend', ` <span>Mi riff · ${song.bars.length} ${song.bars.length === 1 ? 'compás' : 'compases'}</span>`);
   } else {
     const p = findPreset(S.preset);
     $('#sheetTitle').innerHTML = `${p ? p.name : 'Acordes propios'} <span>${song.style.name}${song.style.swing ? ' · corcheas con swing' : ''} · ${song.bars.length} compases</span>`;
@@ -194,9 +202,10 @@ function draw() {
   const zoom = stage ? 1.45 : 1;
   const wide = el.clientWidth / zoom >= 880;
   const dense = song.notes.some(n => n.dur === .5);
+  const sixteenths = song.notes.some(n => (n.vdur ?? n.dur) < .5);
   score = renderScore(el, song, {
     staff: S.staff, tab: S.tab || !S.staff, names: S.names, latin: S.latin, zoom,
-    perLine: wide || !(dense || song.bars.some(b => b.segs.length > 1)) ? 4 : 2,
+    perLine: !sixteenths && (wide || !(dense || song.bars.some(b => b.segs.length > 1))) ? 4 : 2,
     onBar: pickBar,
     marks: S.mode === 'song' ? (findPreset(S.preset) || {}).marks : null,
   });
@@ -277,9 +286,14 @@ engine.onLoop = n => {
 function renderExBar() {
   const bar = $('#exbar');
   const step = S.step;
-  if (S.mode !== 'ex' && step === null) { bar.hidden = true; return; }
+  $('#exEdit').hidden = S.mode !== 'riff';
+  if (S.mode === 'song' && step === null) { bar.hidden = true; return; }
   bar.hidden = false;
-  if (step !== null) {
+  if (S.mode === 'riff') {
+    const r = S.riffs.find(x => x.id === S.riffId);
+    $('#exLabel').innerHTML = '<small>Mi riff</small><b></b>';
+    $('#exLabel b').textContent = r.name;
+  } else if (step !== null) {
     const st = routineFor(dayNumber(), S.latin)[step];
     $('#exLabel').innerHTML = `<small>Paso ${step + 1} de 3 · ${st.kicker}</small><b>${st.title}</b>`;
   } else {
@@ -309,10 +323,19 @@ $('#exNext').onclick = () => startStep(S.step + 1);
 $('#exQuit').onclick = () => {
   if (engine.playing) engine.stop();
   S.step = null;
-  if (S.mode === 'ex') { S.mode = 'song'; range = null; setTempo(STYLES[S.style].tempo); }
-  showView('hoy');
+  const back = S.mode === 'riff' ? 'riffs' : 'hoy';
+  if (S.mode !== 'song') { S.mode = 'song'; range = null; setTempo(STYLES[S.style].tempo); }
+  showView(back);
   rebuild();
 };
+$('#exEdit').onclick = () => { showView('riffs'); riffs.edit(S.riffId); };
+function playRiff(r) {
+  if (engine.playing) engine.stop();
+  S.mode = 'riff'; S.riffId = r.id; S.step = null; range = null;
+  setTempo(r.tempo);
+  rebuild();
+  showView('tocar');
+}
 
 // ---------- vista HOY ----------
 function renderToday() {
@@ -516,7 +539,7 @@ function frame() {
   if (idx >= 0) {
     const n = song.notes[idx];
     $('#nowNote').textContent = noteName(n.midi, n.flats, S.latin);
-    $('#nowRole').textContent = `${n.role} · ${['Sol', 'Re', 'La', 'Mi'][n.string]}, ${n.fret ? 'traste ' + n.fret : 'al aire'}`;
+    $('#nowRole').textContent = `${n.role ? n.role + ' · ' : ''}${['Sol', 'Re', 'La', 'Mi'][n.string]}, ${n.fret ? 'traste ' + n.fret : 'al aire'}`;
     const strong = $('#nowNote');
     strong.classList.remove('hit'); void strong.offsetWidth; strong.classList.add('hit');
   } else {
@@ -533,8 +556,13 @@ function setPlayingUI(on) {
   $('#play span').textContent = on ? 'Parar' : 'Tocar';
   if (!on && score) { score.clear(); if (song) idleNow(); }
 }
-function start() {
-  if (!song) return;
+let starting = false;
+async function start() {
+  if (!song || starting) return;
+  starting = true;
+  // init() se llama dentro del gesto del usuario (lo exige iOS); luego se espera a las muestras
+  await engine.ready();
+  starting = false;
   if (rampStart === null) rampStart = S.tempo;
   if (S.ramp.on && S.ramp.to <= S.tempo) toast(`Para acelerar, pon el objetivo por encima de ${S.tempo} ppm.`);
   engine.start(); setPlayingUI(true); lastNote = -2;
@@ -701,6 +729,7 @@ function showView(name) {
   if (name === 'tocar' && song) draw();
   if (name === 'hoy') renderToday();
   if (name === 'canciones') renderSongs();
+  if (name === 'riffs') riffs.render();
   window.scrollTo({ top: 0 });
 }
 $$('.tabs button').forEach(b => b.onclick = () => showView(b.dataset.view));
@@ -719,10 +748,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 
 // ---------- arranque ----------
+engine.preload();
 engine.tempo = S.tempo; engine.loop = S.loop; engine.countIn = S.countIn;
 engine.muteBass = S.mute; engine.vol = S.vol;
 fillPresets(); fillKeys(); fillStyles(); fillLibrary(); renderRamp();
 board = createFretboard($('#nowBoard'), { frets: 12, latin: S.latin });
+const riffs = initRiffs($('#view-riffs'), { store, engine, getLatin: () => S.latin, onPlay: playRiff });
 const game = initGame($('#view-diapason'), engine, store, () => S.latin);
 const tuner = initTuner($('#view-afinador'), engine, () => S.latin);
 if (!S.text) { const p = findPreset('blues12'); S.text = realize(p.roman, p.key); }

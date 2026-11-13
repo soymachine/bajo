@@ -19,7 +19,9 @@ function restPieces(from, to) {
   let t = from;
   while (to - t > .01) {
     const rem = to - t;
-    const d = t % 1 ? .5 : rem >= 4 && t === 0 ? 4 : rem >= 2 && t % 2 === 0 ? 2 : rem >= 1 ? 1 : .5;
+    const q = Math.round(t * 4); // posición en semicorcheas
+    const d = q % 2 ? .25 : q % 4 ? (rem >= .49 ? .5 : .25)
+      : rem >= 4 && t === 0 ? 4 : rem >= 2 && q % 8 === 0 ? 2 : rem >= 1 ? 1 : rem >= .49 ? .5 : .25;
     out.push({ beat: t, dur: d });
     t += d;
   }
@@ -117,16 +119,19 @@ export function renderScore(container, song, opts) {
       accState[sp.key] = sp.acc;
       const g = svg('g', { class: 'n' }, sys);
       noteEls[n.i].push(g);
-      return { ...n, sp, acc, g, x: xOf(col, n.beat), y: staffTop + 4 * GAP - (sp.step - BOTTOM_STEP) * GAP / 2 };
+      // vdur: duración escrita, si difiere de la que suena
+      return { ...n, dur: n.vdur ?? n.dur, sp, acc, g, x: xOf(col, n.beat), y: staffTop + 4 * GAP - (sp.step - BOTTOM_STEP) * GAP / 2 };
     });
 
     if (opts.staff) {
-      // grupos de corcheas unidas por barra, dentro de cada mitad del compás
+      // grupos de corcheas unidas por barra dentro de cada mitad del compás
+      // (o de cada tiempo, si hay semicorcheas)
+      const span = info.some(n => n.dur === .25 || n.dur === .75) ? 1 : 2;
       const groups = [];
       info.forEach((n, k) => {
         const p = info[k - 1], g = groups[groups.length - 1];
-        if (n.dur === .5 && p && p.dur === .5 && g && g.includes(p) &&
-          Math.abs(p.beat + .5 - n.beat) < .01 && Math.floor(p.beat / 2) === Math.floor(n.beat / 2)) g.push(n);
+        if (n.dur < 1 && p && p.dur < 1 && g && g.includes(p) &&
+          Math.abs(p.beat + p.dur - n.beat) < .01 && Math.floor(p.beat / span) === Math.floor(n.beat / span)) g.push(n);
         else groups.push([n]);
       });
       for (const grp of groups) {
@@ -147,6 +152,15 @@ export function renderScore(container, song, opts) {
         if (grp.length > 1) {
           const y1 = y0 + (z.sx - a.sx) * m, t = dir * -5;
           svg('polygon', { points: `${a.sx - .7},${y0} ${z.sx + .7},${y1} ${z.sx + .7},${y1 + t} ${a.sx - .7},${y0 + t}`, class: 'beam' }, sys);
+          // segunda barra para las semicorcheas
+          const yAt = x => y0 + (x - a.sx) * m + dir * -8;
+          const seg = (x1, x2) => svg('polygon', { points: `${x1},${yAt(x1)} ${x2},${yAt(x2)} ${x2},${yAt(x2) + t} ${x1},${yAt(x1) + t}`, class: 'beam' }, sys);
+          grp.forEach((n, k) => {
+            if (n.dur !== .25) return;
+            const nx = grp[k + 1], pv = grp[k - 1];
+            if (nx && nx.dur === .25) seg(n.sx - .7, nx.sx + .7);
+            else if (!(pv && pv.dur === .25)) (nx ? seg(n.sx - .7, n.sx + 8) : seg(n.sx - 8, n.sx + .7));
+          });
         }
       }
       // silencios
@@ -180,13 +194,15 @@ export function renderScore(container, song, opts) {
     svg('ellipse', { cx: n.x, cy: n.y, rx: 6.2, ry: 4.4, transform: `rotate(-20 ${n.x} ${n.y})`, class: open ? 'head open' : 'head' }, g);
     if (n.dur < 4) svg('line', { x1: n.sx, x2: n.sx, y1: n.y, y2: n.stemEnd, class: 'stem' }, g);
     if (n.acc) svg('text', { x: n.x - 17, y: n.y + 6, class: 'acc' }, g, n.acc);
-    if (n.dur === 1.5 || n.dur === 3) {
+    if (n.dur === .75 || n.dur === 1.5 || n.dur === 3) {
       const onLine = (n.sp.step - BOTTOM_STEP) % 2 === 0;
       svg('circle', { cx: n.x + 11, cy: n.y - (onLine ? GAP / 2 : 0), r: 1.9, class: 'dot' }, g);
     }
-    if (n.dur === .5 && n.single) {
+    if (n.dur < 1 && n.single) {
       const d = n.up ? 1 : -1;
       svg('path', { d: `M${n.sx} ${n.stemEnd} c1 ${8 * d} 9 ${9 * d} 7 ${19 * d}`, class: 'flag' }, g);
+      // la semicorchea suelta lleva dos corchetes
+      if (n.dur === .25) svg('path', { d: `M${n.sx} ${n.stemEnd + 7 * d} c1 ${8 * d} 9 ${9 * d} 7 ${19 * d}`, class: 'flag' }, g);
     }
   }
 
@@ -198,6 +214,10 @@ export function renderScore(container, song, opts) {
     else {
       svg('circle', { cx: x - 3, cy: m - 4, r: 2.4 }, g);
       svg('path', { d: `M${x - 3} ${m - 3} q5 1 7 -3 l-5 17`, class: 'rq' }, g);
+      if (dur < .5) { // silencio de semicorchea: un segundo gancho
+        svg('circle', { cx: x - 5, cy: m + 3, r: 2.4 }, g);
+        svg('path', { d: `M${x - 5} ${m + 4} q5 1 7 -3`, class: 'rq' }, g);
+      }
     }
   }
 

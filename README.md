@@ -17,6 +17,9 @@ acordes mientras marca cada nota, como un karaoke.
   Johnny B. Goode, The Thrill Is Gone…). Se toca la canción entera o una parte; la línea de
   bajo la genera la web en el estilo de la canción (no se copian las líneas originales).
   Para añadir canciones, edita `js/songs.js`.
+- **Mis riffs**: editor en cuadrícula (cuerdas × corcheas o semicorcheas) para escribir líneas
+  de bajo a mano: eliges un traste y tocas la casilla. Se tocan con la banda como cualquier
+  otra línea. Se guardan solo en el navegador, no en este repositorio.
 - **Diapasón**: juego para aprender dónde está cada nota.
 - **Afinador**: tonos de referencia y afinador con micrófono.
 
@@ -33,6 +36,12 @@ sin internet (service worker en `sw.js`; al publicar cambios grandes, sube la ve
 `CACHE`).
 
 Todo se guarda en el navegador (`localStorage`): ajustes, progresiones propias y práctica.
+
+## Sonido
+
+El bajo, la batería y el piano eléctrico son grabaciones de instrumentos reales (carpeta
+`audio/`, unos 500 KB); los créditos y licencias están en `audio/CREDITS.md`. Si las muestras
+no cargan, la web usa un sintetizador de respaldo.
 
 ## Publicar en GitHub Pages
 

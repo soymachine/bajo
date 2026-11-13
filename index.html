@@ -31,6 +31,7 @@
       <button data-view="hoy" class="active">Hoy</button>
       <button data-view="tocar">Tocar</button>
       <button data-view="canciones">Canciones</button>
+      <button data-view="riffs">Mis riffs</button>
       <button data-view="diapason">Diapasón</button>
       <button data-view="afinador">Afinador</button>
     </nav>
@@ -105,6 +106,7 @@
         <div class="bar"><i id="exProg"></i></div>
       </div>
       <button id="exNext" class="btn">Siguiente paso →</button>
+      <button id="exEdit" class="btn ghost" hidden>Editar</button>
       <button id="exQuit" class="btn ghost">Salir</button>
     </section>
 
@@ -220,6 +222,55 @@
       Tocar la canción entera
     </button>
   </dialog>
+
+  <!-- ============ MIS RIFFS ============ -->
+  <main id="view-riffs" class="view">
+    <section class="songs-head">
+      <div>
+        <h2>Mis riffs</h2>
+        <p>Escribe aquí tus líneas de bajo, o las que saques de un libro de tablaturas, y tócalas con
+          la banda. Se guardan solo en este iPad u ordenador.</p>
+      </div>
+      <button id="riffNew" class="btn big new-riff">+ Riff nuevo</button>
+    </section>
+    <div id="riffList" class="riff-list"></div>
+    <p class="hint" id="riffEmpty" hidden>Todavía no hay riffs. Pulsa «Riff nuevo» para escribir el primero.</p>
+
+    <section id="riffEditor" class="plate wide riff-editor" hidden>
+      <div class="rform">
+        <label class="grow">Nombre<input id="riffName" type="text" maxlength="50" autocomplete="off"></label>
+        <label>Tempo
+          <span class="numstep"><button id="riffTempoDown" aria-label="Más lento">−</button><output id="riffTempo">100</output><button id="riffTempoUp" aria-label="Más rápido">+</button></span>
+        </label>
+        <label>Acompañamiento<select id="riffStyle"></select></label>
+        <label>Cuadrícula
+          <span class="seg">
+            <button data-res="8">Corcheas</button>
+            <button data-res="16">Semicorcheas</button>
+          </span>
+        </label>
+        <label class="full">Acordes<input id="riffChords" type="text" spellcheck="false" autocomplete="off" placeholder="Em | Em | D | D"></label>
+      </div>
+      <p class="hint" id="riffChordHint"></p>
+
+      <div class="brush">
+        <span>Traste</span>
+        <div class="brush-keys" id="riffBrush"></div>
+        <p>Elige un traste y toca una casilla de la cuerda. La nota dura hasta la siguiente nota o silencio.</p>
+      </div>
+      <div id="riffBars" class="rbars"></div>
+      <div class="row riff-actions">
+        <button id="riffAddBar" class="btn ghost">+ Añadir compás</button>
+        <span class="spacer"></span>
+        <button id="riffDelete" class="btn ghost danger">Borrar riff</button>
+        <button id="riffClose" class="btn ghost">Cerrar</button>
+        <button id="riffPlay" class="btn">
+          <svg viewBox="0 0 24 24"><path d="M7 4v16l14-8z" fill="currentColor"/></svg>
+          Tocar con la banda
+        </button>
+      </div>
+    </section>
+  </main>
 
   <!-- ============ DIAPASÓN ============ -->
   <main id="view-diapason" class="view">
