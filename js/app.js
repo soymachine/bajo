@@ -123,6 +123,7 @@ function showSpeed() {
   });
 }
 function setTempo(bpm) {
+  rampStart = null; // un tempo puesto a mano o por una canción nueva es el nuevo punto de partida
   S.tempo = Math.max(40, Math.min(200, Math.round(bpm)));
   showTempo(S.tempo);
   showSpeed();
