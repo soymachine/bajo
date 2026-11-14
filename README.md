@@ -9,6 +9,11 @@ acordes mientras marca cada nota, como un karaoke.
   Debajo, una biblioteca de ejercicios: araña cromática, escalas, arpegios, octavas…
 - **Tocar**: progresiones de blues, rock, pop, jazz… en cualquier tono, o tus propios acordes
   (`A7 | D7 | A7 E7`). Diez estilos, tres niveles y un botón para generar otra línea.
+  - **Pausa y seguir**: al pausar se recuerda el compás y se sigue desde su comienzo. El
+    botón ⏮ vuelve al inicio. Tocar un compás en la partitura o en la línea de tiempo salta
+    a él (si está sonando, sigue desde ahí).
+  - **Velocidad**: botones ½, ¾ y 1× respecto al tempo de la canción.
+  - La pantalla no se apaga mientras suena la música.
   - «El bajo lo toco yo» deja solo el acompañamiento.
   - **Tramo**: elige unos compases en la partitura para repetir solo esa parte.
   - **Acelerar cada vuelta**: sube el tempo unos ppm por vuelta hasta el objetivo.

@@ -33,6 +33,7 @@ export class Engine {
     this.total = 16;
     this.onEnd = null;
     this.onLoop = null;
+    this.origin = 0; this.lastPos = null; this.finished = false;
     this.kit = {};       // muestras decodificadas, por tipo
     this.rr = {};        // contadores para alternar golpes (round robin)
     this.loading = null; this.decoding = null;
@@ -139,9 +140,11 @@ export class Engine {
   }
   absBeat() { return this.Tinv(this.ctx.currentTime - this.t0); }
 
-  start() {
+  /** Empieza a tocar desde el tiempo `from` de la vuelta, con o sin cuenta atrás. */
+  start(from = 0, countIn = this.countIn) {
     this.init();
     this.stop(true);
+    this.finished = false;
     const now = this.ctx.currentTime;
     this.sess = this.ctx.createGain();
     this.sess.connect(this.master);
@@ -151,10 +154,13 @@ export class Engine {
       this.bus[k].connect(this.sess);
     }
     this.applyVol();
-    const startAbs = this.countIn ? -4 : 0;
+    const startAbs = countIn ? from - 4 : from;
+    this.origin = from;
     this.t0 = now + .12 - this.T(startAbs);
-    for (let b = startAbs; b < 0; b++) this.click(this.t0 + this.T(b), b === startAbs);
-    this.idx = 0; this.loopN = 0;
+    for (let b = startAbs; b < from; b++) this.click(this.t0 + this.T(b), b === startAbs);
+    this.idx = this.events.findIndex(e => e.beat >= from - 1e-6);
+    if (this.idx < 0) this.idx = this.events.length;
+    this.loopN = 0;
     this.playing = true;
     this.timer = setInterval(() => this.tick(), 25);
     this.tick();
@@ -162,6 +168,7 @@ export class Engine {
 
   stop(silent) {
     if (!this.playing) return;
+    this.lastPos = this.position(); // dónde se quedó, para poder reanudar
     this.playing = false;
     clearInterval(this.timer);
     const s = this.sess, now = this.ctx.currentTime;
@@ -187,7 +194,7 @@ export class Engine {
       this.fire(ev, Math.max(t, now), this.T(abs + ev.dur) - this.T(abs));
       this.idx++;
     }
-    if (endAbs !== null && now > this.t0 + this.T(endAbs)) this.stop();
+    if (endAbs !== null && now > this.t0 + this.T(endAbs)) { this.finished = true; this.stop(); }
   }
 
   /** Posición actual: tiempo dentro de la vuelta (negativo durante la cuenta atrás). */
@@ -195,7 +202,8 @@ export class Engine {
     if (!this.playing) return null;
     const lat = this.ctx.outputLatency || this.ctx.baseLatency || 0;
     const abs = this.Tinv(this.ctx.currentTime - lat - this.t0);
-    return abs < 0 ? abs : abs % this.total;
+    // negativo durante la cuenta atrás (tiempos que faltan para empezar)
+    return abs < this.origin ? abs - this.origin : abs % this.total;
   }
 
   retime(fn) {
@@ -218,7 +226,12 @@ export class Engine {
     this.events = events; this.total = total;
     if (this.playing) {
       const cur = this.absBeat();
-      if (cur < 0) { this.idx = 0; this.loopN = 0; return; }
+      if (cur < this.origin) {
+        this.idx = events.findIndex(e => e.beat >= this.origin - 1e-6);
+        if (this.idx < 0) this.idx = events.length;
+        this.loopN = 0;
+        return;
+      }
       this.loopN = Math.floor(cur / total);
       const at = cur % total + .2 * this.tempo / 60;
       this.idx = events.findIndex(e => e.beat >= at);

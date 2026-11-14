@@ -668,3 +668,29 @@ footer .keys { margin-top: 4px; }
 .btn:disabled { opacity: .4; }
 .pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 0 0 12px; font-weight: 600; }
 .pager .btn:disabled { opacity: .35; }
+
+/* ---------- pausa, inicio, velocidad y línea de tiempo ---------- */
+.to-start {
+  width: 52px; height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg2);
+  display: grid; place-items: center; margin-left: -6px;
+}
+.to-start svg { width: 24px; height: 24px; }
+.to-start:active { background: var(--amber); color: var(--ink); }
+.speed { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-left: 6px; }
+.speed button { border: 0; background: #1c1511; min-width: 40px; height: 38px; font-weight: 700; font-size: .95rem; }
+.speed button + button { border-left: 1px solid var(--line); }
+.speed button.active { background: var(--teal); color: #08211c; }
+.timeline { flex: 1 1 100%; display: flex; align-items: center; gap: 14px; }
+.tl-bars { flex: 1; display: flex; gap: 2px; height: 22px; align-items: stretch; cursor: pointer; }
+.tl-bars.dense { gap: 0; }
+.tl-bars i { flex: 1; min-width: 0; background: #15100d; border-radius: 3px; position: relative; }
+.tl-bars.dense i { border-radius: 0; }
+.tl-bars i.mark { box-shadow: inset 3px 0 0 var(--teal); }
+.tl-bars i.out { opacity: .35; }
+.tl-bars i.done { background: #6b4a1e; }
+.tl-bars i.cur { background: var(--red); }
+.tl-bars i.here { background: var(--amber); }
+@media (hover: hover) { .tl-bars i:hover { background: var(--cream); } }
+#tlText { font-family: var(--cond); font-size: .9rem; letter-spacing: .06em; color: var(--muted); white-space: nowrap; min-width: 150px; text-align: right; }
+.barbg.cursor { fill: rgba(216, 72, 46, .1); stroke: var(--red); stroke-width: 2.5; }
+.score .system { cursor: pointer; }

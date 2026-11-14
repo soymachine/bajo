@@ -223,6 +223,10 @@ export function renderScore(container, song, opts) {
 
   let curNote = -1, curBar = -1, curSys = null;
   const api = {
+    /** Marca el compás desde el que se empezará a tocar (null para quitar la marca). */
+    setCursor(bar) {
+      barEls.forEach((el, i) => el.classList.toggle('cursor', i === bar));
+    },
     /** Resalta los compases del tramo elegido (a..b) o lo quita (null). */
     setRange(a, b) {
       barEls.forEach((el, i) => {

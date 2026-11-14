@@ -36,6 +36,8 @@ const S = store.data;
 const engine = new Engine();
 let song = null, score = null, board = null, lastNote = -2, lastBar = -1;
 let range = null, picking = null, pickStart = 0, rampStart = null, stage = false;
+let cursor = 0;      // compás desde el que se tocará al pulsar Tocar / Seguir
+let tlBar = -1, wakeLock = null;
 
 const dateKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = () => dateKey(new Date());
@@ -103,23 +105,34 @@ function fillStyles() {
 }
 function setStyle(id, withTempo) {
   S.style = id;
-  if (withTempo) setTempo(STYLES[id].tempo);
+  if (withTempo) setBaseTempo(STYLES[id].tempo);
   rebuild();
 }
 function showTempo(bpm) {
   $('#tempo').value = bpm;
   $('#tempoVal').textContent = bpm;
 }
+/** Tempo «de la canción»: la referencia para los botones de velocidad (½, ¾, 1×). */
+function setBaseTempo(bpm) { S.baseTempo = bpm; setTempo(bpm); }
+function showSpeed() {
+  const base = S.baseTempo || S.tempo;
+  $$('#speed button').forEach(b => {
+    const t = Math.max(40, Math.round(base * +b.dataset.speed));
+    b.classList.toggle('active', t === S.tempo);
+    b.title = `${t} ppm`;
+  });
+}
 function setTempo(bpm) {
   S.tempo = Math.max(40, Math.min(200, Math.round(bpm)));
   showTempo(S.tempo);
+  showSpeed();
   engine.setTempo(S.tempo);
   store.save();
 }
 function applyPreset(id) {
   const p = findPreset(id);
   if (!p) return;
-  S.mode = 'song'; S.step = null; range = null;
+  S.mode = 'song'; S.step = null; range = null; cursor = 0;
   S.preset = id;
   S.key = p.key;
   S.text = p.roman ? realize(p.roman, p.key) : p.text;
@@ -130,14 +143,14 @@ function applyPreset(id) {
     $('#preset').value = id.startsWith('song:') ? id.split(':').slice(0, 2).join(':') : 'custom';
   }
   $('#key').value = S.key;
-  if (p.style) { S.style = p.style; setTempo(p.tempo || STYLES[p.style].tempo); }
+  if (p.style) { S.style = p.style; setBaseTempo(p.tempo || STYLES[p.style].tempo); }
   $('#del').hidden = !S.custom.some(c => c.id === id);
   rebuild();
 }
 function loadExercise(spec, step = null) {
   if (engine.playing) engine.stop();
-  S.mode = 'ex'; S.ex = spec; S.step = step; range = null;
-  setTempo(makeExercise(spec).style.tempo);
+  S.mode = 'ex'; S.ex = spec; S.step = step; range = null; cursor = 0;
+  setBaseTempo(makeExercise(spec).style.tempo);
   rebuild();
 }
 
@@ -167,6 +180,7 @@ function rebuild() {
     song = generate(prog, S.style, S.level, S.seed);
   }
   if (range && range[1] >= song.bars.length) range = null;
+  if (cursor >= song.bars.length || (range && (cursor < range[0] || cursor > range[1]))) cursor = range ? range[0] : 0;
   pushEvents();
   if (!engine.playing) setPlayingUI(false);
 
@@ -212,6 +226,8 @@ function draw() {
   el.classList.toggle('picking', !!picking);
   if (range) score.setRange(range[0], range[1]);
   else if (picking === 'end') score.setRange(pickStart, pickStart);
+  renderTimeline();
+  if (!engine.playing) showCursor();
   lastNote = -2; lastBar = -1;
   if (!engine.playing) idleNow();
 }
@@ -227,17 +243,19 @@ function renderRange() {
   else txt.textContent = range ? `Compases ${range[0] + 1} a ${range[1] + 1}` : 'Toda la canción';
 }
 function pickBar(bar) {
-  if (!picking) return;
+  if (!picking) return jump(bar);
   if (picking === 'start') {
     pickStart = bar; picking = 'end';
     score.setRange(bar, bar);
   } else {
     if (engine.playing) engine.stop();
     range = [Math.min(pickStart, bar), Math.max(pickStart, bar)];
+    cursor = range[0];
     picking = null;
     $('#score').classList.remove('picking');
     pushEvents();
     score.setRange(range[0], range[1]);
+    renderTimeline(); showCursor();
     idleNow();
   }
   renderRange();
@@ -250,9 +268,10 @@ $('#pickRange').onclick = () => {
 };
 $('#clearRange').onclick = () => {
   if (engine.playing) engine.stop();
-  range = null; picking = null;
+  range = null; cursor = 0; picking = null;
   pushEvents();
   score.setRange(null);
+  renderTimeline(); showCursor();
   renderRange(); idleNow();
 };
 
@@ -324,15 +343,15 @@ $('#exQuit').onclick = () => {
   if (engine.playing) engine.stop();
   S.step = null;
   const back = S.mode === 'riff' ? 'riffs' : 'hoy';
-  if (S.mode !== 'song') { S.mode = 'song'; range = null; setTempo(STYLES[S.style].tempo); }
+  if (S.mode !== 'song') { S.mode = 'song'; range = null; cursor = 0; setBaseTempo(STYLES[S.style].tempo); }
   showView(back);
   rebuild();
 };
 $('#exEdit').onclick = () => { showView('riffs'); riffs.edit(S.riffId); };
 function playRiff(r) {
   if (engine.playing) engine.stop();
-  S.mode = 'riff'; S.riffId = r.id; S.step = null; range = null;
-  setTempo(r.tempo);
+  S.mode = 'riff'; S.riffId = r.id; S.step = null; range = null; cursor = 0;
+  setBaseTempo(r.tempo);
   rebuild();
   showView('tocar');
 }
@@ -489,7 +508,7 @@ function chordAt(bar, beat) {
 }
 const chordLabel = c => (c && c.name ? pretty(c.name) : '—');
 function idleNow() {
-  const b0 = range ? range[0] : 0;
+  const b0 = cursor;
   const first = song.bars[b0].segs[0];
   const next = song.segs.find(s => s.bar >= b0 && s.chord.name !== first.chord.name);
   $('#nowChord').textContent = chordLabel(first.chord);
@@ -518,12 +537,14 @@ function frame() {
   if (!engine.playing || !song) return;
   const pos = engine.position();
   if (pos === null) return;
+  if (pos < 0 && pos > -.04) return; // arranque sin cuenta atrás
   if (pos < 0) {
     $('#nowNote').textContent = 5 + Math.floor(pos);
     $('#nowRole').textContent = 'preparados…';
     return;
   }
   const beat = pos + rangeStart();
+  if (Math.floor(beat / 4) !== tlBar) updateTimeline(Math.floor(beat / 4));
   const idx = score.setBeat(beat);
   const bar = Math.floor(beat / 4);
   if (idx === lastNote && bar === lastBar) return;
@@ -551,13 +572,60 @@ function frame() {
 }
 
 // ---------- reproducción y registro de práctica ----------
+const firstBar = () => (range ? range[0] : 0);
 function setPlayingUI(on) {
   document.body.classList.toggle('playing', on);
-  $('#play span').textContent = on ? 'Parar' : 'Tocar';
-  if (!on && score) { score.clear(); if (song) idleNow(); }
+  $('#play span').textContent = on ? 'Pausa' : cursor > firstBar() ? 'Seguir' : 'Tocar';
+  $('#play').setAttribute('aria-label', on ? 'Pausar' : 'Reproducir');
+  if (!on && score) { score.clear(); if (song) idleNow(); showCursor(); updateTimeline(-1); }
+  if (on && score) { score.setCursor(null); $$('#tlBars .cur').forEach(el => el.classList.toggle('cur', false)); }
+  keepAwake(on);
 }
+/** La pantalla no se apaga mientras suena la música. */
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && navigator.wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!on && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+  } catch (e) { /* el navegador no lo permite: no pasa nada */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && engine.playing) keepAwake(true); });
+
+function showCursor() {
+  if (!score) return;
+  score.setCursor(cursor > firstBar() ? cursor : null);
+  $$('#tlBars i').forEach((el, b) => el.classList.toggle('cur', b === cursor && cursor > firstBar()));
+  if (!engine.playing) $('#tlText').textContent = cursor > firstBar()
+    ? `En pausa en el compás ${cursor + 1} de ${song.bars.length}` : `${song.bars.length} ${song.bars.length === 1 ? 'compás' : 'compases'}`;
+}
+function renderTimeline() {
+  const box = $('#tlBars');
+  box.innerHTML = '';
+  const marks = S.mode === 'song' ? (findPreset(S.preset) || {}).marks || {} : {};
+  box.classList.toggle('dense', song.bars.length > 64);
+  song.bars.forEach((_, b) => {
+    const el = document.createElement('i');
+    if (marks[b]) { el.className = 'mark'; el.title = marks[b]; }
+    if (range && (b < range[0] || b > range[1])) el.classList.add('out');
+    el.dataset.b = b;
+    box.appendChild(el);
+  });
+  tlBar = -1;
+}
+function updateTimeline(bar) {
+  tlBar = bar;
+  $$('#tlBars i').forEach((el, b) => {
+    el.classList.toggle('here', b === bar);
+    el.classList.toggle('done', bar >= 0 && b < bar && b >= firstBar());
+  });
+  if (bar >= 0) $('#tlText').textContent = `Compás ${bar + 1} de ${song.bars.length}`;
+}
+$('#tlBars').onclick = e => { const el = e.target.closest('i'); if (el) jump(+el.dataset.b); };
+
 let starting = false;
-async function start() {
+/** Toca desde el compás indicado (por defecto, donde está el cursor). */
+async function start(fromBar = cursor, countIn = S.countIn) {
   if (!song || starting) return;
   starting = true;
   // init() se llama dentro del gesto del usuario (lo exige iOS); luego se espera a las muestras
@@ -565,21 +633,53 @@ async function start() {
   starting = false;
   if (rampStart === null) rampStart = S.tempo;
   if (S.ramp.on && S.ramp.to <= S.tempo) toast(`Para acelerar, pon el objetivo por encima de ${S.tempo} ppm.`);
-  engine.start(); setPlayingUI(true); lastNote = -2;
+  cursor = fromBar;
+  engine.start((fromBar - firstBar()) * 4, countIn);
+  setPlayingUI(true); lastNote = -2; lastBar = -1;
+}
+/** Para la música recordando el compás, para seguir desde ahí. */
+function pause() {
+  if (!engine.playing) return;
+  engine.stop(true);
+  const pos = engine.lastPos;
+  if (pos !== null && pos >= 0) cursor = Math.floor(pos / 4) + firstBar();
+  setPlayingUI(false);
 }
 function toggle() {
-  if (engine.playing) engine.stop();
+  if (engine.playing) pause();
   else start();
 }
+function toStart() {
+  cursor = firstBar();
+  if (engine.playing) start(cursor);
+  else { endRamp(); setPlayingUI(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+/** Salta a un compás: si está sonando sigue desde ahí; si no, lo deja preparado. */
+function jump(bar) {
+  if (!song || bar < 0 || bar >= song.bars.length) return;
+  if (range && (bar < range[0] || bar > range[1])) { toast('Ese compás está fuera del tramo elegido. Pulsa «Toda la canción» para quitarlo.'); return; }
+  if (engine.playing) start(bar, false);
+  else { cursor = bar; setPlayingUI(false); }
+}
 engine.onEnd = () => {
+  // fin natural de la canción: vuelve al principio; cualquier otra parada recuerda el compás
+  const pos = engine.lastPos;
+  if (engine.finished) cursor = firstBar();
+  else if (pos !== null && pos >= 0) cursor = Math.floor(pos / 4) + firstBar();
   setPlayingUI(false);
+  endRamp();
+  store.save();
+};
+/** Tras «Acelerar cada vuelta», devuelve el tempo al de partida (la pausa lo conserva). */
+function endRamp() {
   if (rampStart !== null && S.tempo !== rampStart) {
     toast(`¡Has llegado a ${S.tempo} ppm! El tempo vuelve a ${rampStart} para la próxima.`);
     setTempo(rampStart);
   }
   rampStart = null;
-  store.save();
-};
+}
+$('#toStart').onclick = toStart;
+$$('#speed button').forEach(b => b.onclick = () => setTempo((S.baseTempo || S.tempo) * +b.dataset.speed));
 setInterval(() => {
   if (!engine.playing) return;
   const d = today();
@@ -651,7 +751,7 @@ document.addEventListener('keydown', e => {
   if ((k === ' ' || k === 'Enter') && onControl) return; // activa el control enfocado
   if (/^Arrow/.test(k) && t.matches('input[type=range]')) return;
   if ([' ', 'Enter', 'ArrowRight', 'ArrowDown', 'PageDown'].includes(k)) toggle();
-  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) start();
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) toStart();
   else if (k === '+' || k === '=') setTempo(S.tempo + 4);
   else if (k === '-') setTempo(S.tempo - 4);
   else if (k === 'f' || k === 'F') setStage(!stage);
@@ -697,7 +797,7 @@ $('#key').onchange = e => {
 function applyText() {
   const t = $('#chords').value;
   if (formatText(t) === formatText(S.text)) return;
-  S.text = t; S.preset = 'custom'; S.seed = 0; S.step = null; range = null;
+  S.text = t; S.preset = 'custom'; S.seed = 0; S.step = null; range = null; cursor = 0;
   $('#preset').value = 'custom'; $('#del').hidden = true;
   rebuild();
 }

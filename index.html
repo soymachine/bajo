@@ -75,8 +75,11 @@
     <section class="transport">
       <button id="play" class="play" aria-label="Reproducir">
         <svg viewBox="0 0 24 24" class="ico-play"><path d="M7 4v16l14-8z"/></svg>
-        <svg viewBox="0 0 24 24" class="ico-stop"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+        <svg viewBox="0 0 24 24" class="ico-stop"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>
         <span>Tocar</span>
+      </button>
+      <button id="toStart" class="to-start" aria-label="Volver al inicio" title="Volver al inicio (tecla ←)">
+        <svg viewBox="0 0 24 24"><path d="M6 5v14M20 5v14l-11-7z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
       </button>
       <div class="tempo">
         <label for="tempo">Tempo</label>
@@ -84,6 +87,9 @@
         <input id="tempo" type="range" min="40" max="200" step="1">
         <button id="tempoUp" class="step" aria-label="Más rápido">+</button>
         <output id="tempoVal">100</output><small>ppm</small>
+        <div class="speed" id="speed" title="Velocidad respecto al tempo de la canción">
+          <button data-speed=".5">½</button><button data-speed=".75">¾</button><button data-speed="1">1×</button>
+        </div>
       </div>
       <label class="switch"><input type="checkbox" id="loop"><span>Repetir</span></label>
       <label class="switch"><input type="checkbox" id="countin"><span>Cuenta 1-2-3-4</span></label>
@@ -97,6 +103,10 @@
         <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Pantalla grande</span>
       </button>
+      <div class="timeline">
+        <div class="tl-bars" id="tlBars" title="Toca un compás para saltar a él"></div>
+        <span id="tlText"></span>
+      </div>
     </section>
 
     <section class="exbar" id="exbar" hidden>
@@ -367,8 +377,8 @@
   <footer>
     <p>En iPad o iPhone, si no suena nada, quita el modo silencio y sube el volumen.</p>
     <p class="keys"><b>Pedal o teclado:</b>
-      <kbd>Espacio</kbd> o <kbd>→</kbd> tocar / parar ·
-      <kbd>←</kbd> volver a empezar ·
+      <kbd>Espacio</kbd> o <kbd>→</kbd> tocar / pausa ·
+      <kbd>←</kbd> volver al inicio ·
       <kbd>+</kbd> <kbd>−</kbd> tempo ·
       <kbd>F</kbd> pantalla grande</p>
   </footer>
