@@ -20,6 +20,10 @@ acordes mientras marca cada nota, como un karaoke.
 - **Mis riffs**: editor en cuadrícula (cuerdas × corcheas o semicorcheas) para escribir líneas
   de bajo a mano: eliges un traste y tocas la casilla. Se tocan con la banda como cualquier
   otra línea. Se guardan solo en el navegador, no en este repositorio.
+  - **Importar Guitar Pro**: abre un `.gp3`, `.gp4`, `.gp5`, `.gpx`, `.gp` o MusicXML, elige la
+    pista y los compases, y se convierte en un riff editable. El archivo se lee en el propio
+    navegador con [alphaTab](https://alphatab.net) (`vendor/`, licencia MPL-2.0), que solo se
+    descarga al importar.
 - **Diapasón**: juego para aprender dónde está cada nota.
 - **Afinador**: tonos de referencia y afinador con micrófono.
 

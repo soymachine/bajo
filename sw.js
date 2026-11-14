@@ -1,10 +1,10 @@
 // Service worker: guarda la web para que funcione sin conexión.
 // Primero intenta la red (así siempre se ve la última versión) y, si no hay, usa la copia.
-const CACHE = 'cuatro-cuerdas-v5';
+const CACHE = 'cuatro-cuerdas-v6';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/app.js', 'js/theory.js', 'js/generator.js', 'js/audio.js', 'js/score.js',
-  'js/fretboard.js', 'js/fretgame.js', 'js/tuner.js', 'js/exercises.js', 'js/songs.js', 'js/riffs.js',
+  'js/fretboard.js', 'js/fretgame.js', 'js/tuner.js', 'js/exercises.js', 'js/songs.js', 'js/riffs.js', 'js/gpimport.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png',
   ...['E1', 'G1', 'Bb1', 'Db2', 'E2', 'G2', 'Bb2', 'Db3', 'E3', 'G3'].map(n => `audio/bass/${n}.mp3`),
   ...['E3', 'G3', 'Bb3', 'Db4', 'E4'].map(n => `audio/keys/${n}.mp3`),

@@ -71,7 +71,8 @@ export function initRiffs(root, { store, engine, getLatin, onPlay }) {
   const $ = s => root.querySelector(s);
   const S = store.data;
   if (!S.riffs) S.riffs = [exampleRiff()];
-  let cur = null, brush = 0;
+  const PAGE = 8; // compases que se muestran a la vez en el editor
+  let cur = null, brush = 0, page = 0;
 
   const save = () => store.save();
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
@@ -101,7 +102,7 @@ export function initRiffs(root, { store, engine, getLatin, onPlay }) {
 
   // ---------- editor ----------
   function open(r) {
-    cur = r;
+    cur = r; page = 0;
     $('#riffEditor').hidden = false;
     $('#riffName').value = r.name;
     $('#riffChords').value = r.chords;
@@ -136,7 +137,15 @@ export function initRiffs(root, { store, engine, getLatin, onPlay }) {
     box.innerHTML = '';
     const labels = cur.res === 8 ? ['1', 'y', '2', 'y', '3', 'y', '4', 'y']
       : ['1', '', 'y', '', '2', '', 'y', '', '3', '', 'y', '', '4', '', 'y', ''];
+    const pages = Math.ceil(cur.bars.length / PAGE);
+    page = Math.max(0, Math.min(page, pages - 1));
+    const pager = $('#riffPager');
+    pager.hidden = pages < 2;
+    $('#riffPageTxt').textContent = `Compases ${page * PAGE + 1} a ${Math.min(cur.bars.length, (page + 1) * PAGE)} de ${cur.bars.length}`;
+    $('#riffPrev').disabled = page === 0;
+    $('#riffNext').disabled = page >= pages - 1;
     cur.bars.forEach((steps, b) => {
+      if (b < page * PAGE || b >= (page + 1) * PAGE) return;
       const wrap = el('div', 'rbar');
       const head = el('div', 'rbar-head', `<b>Compás ${b + 1}</b>`);
       const dup = el('button', 'btn ghost sm', 'Duplicar');
@@ -201,7 +210,66 @@ export function initRiffs(root, { store, engine, getLatin, onPlay }) {
     if (loses && !confirm('Al pasar a corcheas se perderán las notas que están en semicorcheas intermedias. ¿Continuar?')) return;
     resize(cur, res); save(); renderMeta(); renderBars();
   });
-  $('#riffAddBar').onclick = () => { cur.bars.push(emptyBar(cur.res)); changed(); };
+  $('#riffAddBar').onclick = () => { cur.bars.push(emptyBar(cur.res)); page = Math.floor((cur.bars.length - 1) / PAGE); changed(); };
+  $('#riffPrev').onclick = () => { page--; renderBars(); };
+  $('#riffNext').onclick = () => { page++; renderBars(); };
+
+  // ---------- importar Guitar Pro / MusicXML ----------
+  let gp = null; // { mod, score, fileName }
+  const dlg = $('#gpDlg');
+  const closeDlg = () => (dlg.close ? dlg.close() : dlg.removeAttribute('open'));
+  function gpPreview() {
+    const total = gp.score.masterBars.length;
+    let from = Math.max(1, Math.min(total, parseInt($('#gpFrom').value, 10) || 1));
+    let to = Math.max(from, Math.min(total, parseInt($('#gpTo').value, 10) || total));
+    gp.result = gp.mod.trackToRiff(gp.score, +$('#gpTrack').value, from, to, gp.fileName);
+    const { riff, warnings, noteCount } = gp.result;
+    $('#gpInfo').textContent = `${riff.bars.length} ${riff.bars.length === 1 ? 'compás' : 'compases'} · ${noteCount} notas · ${riff.tempo} ppm · cuadrícula de ${riff.res === 16 ? 'semicorcheas' : 'corcheas'}`;
+    const ul = $('#gpWarn');
+    ul.innerHTML = '';
+    for (const w of warnings) ul.appendChild(el('li', '', esc(w)));
+    $('#gpOk').disabled = noteCount === 0;
+    if (!noteCount) ul.appendChild(el('li', '', 'Esta pista no tiene notas en esos compases.'));
+  }
+  $('#gpBtn').onclick = () => $('#gpFile').click();
+  $('#gpFile').onchange = async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const status = $('#gpStatus');
+    status.hidden = false; status.classList.remove('error');
+    status.textContent = `Leyendo ${file.name}…`;
+    try {
+      const mod = await import('./gpimport.js');
+      const score = await mod.readScore(await file.arrayBuffer());
+      const { tracks, best } = mod.listTracks(score);
+      if (!tracks.length) throw new Error('El archivo no tiene pistas de instrumento.');
+      gp = { mod, score, fileName: file.name };
+      status.hidden = true;
+      $('#gpTitle').textContent = score.title || file.name;
+      $('#gpBy').textContent = [score.artist, score.album].filter(Boolean).join(' · ');
+      const sel = $('#gpTrack');
+      sel.innerHTML = '';
+      for (const t of tracks) sel.appendChild(new Option(`${t.name} — ${t.strings} cuerdas, ${t.notes} notas${t.bass ? ' (bajo)' : ''}`, t.index));
+      sel.value = best;
+      $('#gpFrom').value = 1; $('#gpTo').value = score.masterBars.length;
+      $('#gpFrom').max = $('#gpTo').max = score.masterBars.length;
+      gpPreview();
+      if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    } catch (err) {
+      status.classList.add('error');
+      status.textContent = `No se pudo leer «${file.name}». ¿Es un archivo de Guitar Pro (.gp3, .gp4, .gp5, .gpx, .gp) o MusicXML? ${err && err.message ? '(' + err.message + ')' : ''}`;
+    }
+  };
+  for (const id of ['#gpTrack', '#gpFrom', '#gpTo']) $(id).onchange = gpPreview;
+  $('#gpCancel').onclick = closeDlg;
+  $('#gpOk').onclick = () => {
+    gpPreview();
+    const { riff } = gp.result;
+    S.riffs.unshift(riff);
+    save(); closeDlg();
+    open(riff);
+  };
   $('#riffPlay').onclick = () => onPlay(cur);
   $('#riffClose').onclick = () => { cur = null; $('#riffEditor').hidden = true; renderList(); };
   $('#riffDelete').onclick = () => {

@@ -649,3 +649,22 @@ footer .keys { margin-top: 4px; }
   .strings { width: 34px; }
   .rbars { grid-template-columns: 1fr; }
 }
+
+/* ---------- importar Guitar Pro ---------- */
+.riff-top { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn.big.new-riff.ghost { background: none; border: 1px solid var(--line); color: var(--cream); font-weight: 600; }
+.btn.big.new-riff svg { width: 22px; height: 22px; }
+.gp-status { font-size: .95rem; margin: 0 0 14px; }
+.gp-dlg .kick { margin: 0; font-family: var(--cond); text-transform: uppercase; letter-spacing: .18em; font-size: .82rem; color: var(--amber); }
+.gp-dlg h2 { margin: 4px 0 2px; font-family: var(--display); font-weight: 400; font-size: 1.9rem; line-height: 1.1; }
+.gp-dlg .by { margin: 0 0 18px; color: var(--muted); min-height: 1em; }
+.gp-dlg select { width: 100%; }
+.rform input[type=number] {
+  width: 130px; background: #17110d; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 46px;
+  font-family: var(--display); font-size: 1.1rem; color: var(--amber);
+}
+.gp-info { margin: 18px 0 8px; font-weight: 600; }
+.gp-warn { margin: 0; padding-left: 20px; color: #ffc9a3; font-size: .9rem; line-height: 1.45; }
+.btn:disabled { opacity: .4; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 0 0 12px; font-weight: 600; }
+.pager .btn:disabled { opacity: .35; }

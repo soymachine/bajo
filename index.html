@@ -231,8 +231,16 @@
         <p>Escribe aquí tus líneas de bajo, o las que saques de un libro de tablaturas, y tócalas con
           la banda. Se guardan solo en este iPad u ordenador.</p>
       </div>
-      <button id="riffNew" class="btn big new-riff">+ Riff nuevo</button>
+      <div class="riff-top">
+        <button id="riffNew" class="btn big new-riff">+ Riff nuevo</button>
+        <button id="gpBtn" class="btn big new-riff ghost">
+          <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Importar Guitar Pro
+        </button>
+        <input type="file" id="gpFile" hidden>
+      </div>
     </section>
+    <p class="hint gp-status" id="gpStatus" hidden></p>
     <div id="riffList" class="riff-list"></div>
     <p class="hint" id="riffEmpty" hidden>Todavía no hay riffs. Pulsa «Riff nuevo» para escribir el primero.</p>
 
@@ -258,6 +266,11 @@
         <div class="brush-keys" id="riffBrush"></div>
         <p>Elige un traste y toca una casilla de la cuerda. La nota dura hasta la siguiente nota o silencio.</p>
       </div>
+      <div class="pager" id="riffPager" hidden>
+        <button id="riffPrev" class="btn ghost sm">← Anteriores</button>
+        <span id="riffPageTxt"></span>
+        <button id="riffNext" class="btn ghost sm">Siguientes →</button>
+      </div>
       <div id="riffBars" class="rbars"></div>
       <div class="row riff-actions">
         <button id="riffAddBar" class="btn ghost">+ Añadir compás</button>
@@ -270,6 +283,25 @@
         </button>
       </div>
     </section>
+  
+
+  <dialog id="gpDlg" class="song-dlg gp-dlg">
+      <p class="kick">Importar tablatura</p>
+      <h2 id="gpTitle"></h2>
+      <p class="by" id="gpBy"></p>
+      <div class="rform">
+        <label class="full">Pista<select id="gpTrack"></select></label>
+        <label>Desde el compás<input id="gpFrom" type="number" min="1" inputmode="numeric"></label>
+        <label>Hasta el compás<input id="gpTo" type="number" min="1" inputmode="numeric"></label>
+      </div>
+      <p class="gp-info" id="gpInfo"></p>
+      <ul class="gp-warn" id="gpWarn"></ul>
+      <div class="row riff-actions">
+        <span class="spacer"></span>
+        <button id="gpCancel" class="btn ghost">Cancelar</button>
+        <button id="gpOk" class="btn">Importar a Mis riffs</button>
+      </div>
+    </dialog>
   </main>
 
   <!-- ============ DIAPASÓN ============ -->

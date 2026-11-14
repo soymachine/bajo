@@ -92,13 +92,13 @@ export function realize(roman, key) {
  * Elige cuerda y traste para cada nota. La mano cubre cuatro trastes (un dedo por
  * traste): se prefieren las notas dentro de esa zona y se penalizan los saltos.
  */
-export function fingering(midis) {
+export function fingering(midis, maxFret = 14) {
   let base = 1;
   return midis.map(m => {
     let best = null;
     OPEN.forEach((open, s) => {
       const f = m - open;
-      if (f < 0 || f > 14) return;
+      if (f < 0 || f > maxFret) return;
       let cost;
       if (f === 0) cost = .3;
       else if (f >= base && f <= base + 3) cost = f * .05;
