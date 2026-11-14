@@ -24,6 +24,9 @@ acordes mientras marca cada nota, como un karaoke.
     pista y los compases, y se convierte en un riff editable. El archivo se lee en el propio
     navegador con [alphaTab](https://alphatab.net) (`vendor/`, licencia MPL-2.0), que solo se
     descarga al importar.
+  - **Compartir**: cada riff se puede enviar como enlace (el riff va comprimido dentro del
+    propio enlace, sin servidor). Quien lo abre lo recibe en sus riffs. En la app instalada
+    en el iPad, que no comparte datos con Safari, se usa «Pegar enlace».
 - **Diapasón**: juego para aprender dónde está cada nota.
 - **Afinador**: tonos de referencia y afinador con micrófono.
 

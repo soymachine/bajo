@@ -67,7 +67,53 @@ function resize(riff, res) {
   riff.res = res;
 }
 
-export function initRiffs(root, { store, engine, getLatin, onPlay }) {
+// ---------- compartir por enlace ----------
+// El riff viaja comprimido dentro del propio enlace (tras la #), sin servidor.
+const b64 = {
+  enc: bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+  dec: str => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+};
+async function pipe(bytes, stream) {
+  const out = new Response(new Blob([bytes]).stream().pipeThrough(stream));
+  return new Uint8Array(await out.arrayBuffer());
+}
+export async function riffToLink(riff) {
+  const { name, tempo, style, res, chords, bars } = riff;
+  const json = new TextEncoder().encode(JSON.stringify({ name, tempo, style, res, chords, bars }));
+  const base = location.href.split('#')[0];
+  if (typeof CompressionStream === 'function') return `${base}#riff=z${b64.enc(await pipe(json, new CompressionStream('deflate-raw')))}`;
+  return `${base}#riff=j${b64.enc(json)}`;
+}
+/** Lee un riff de un enlace y lo valida entero: viene de fuera, no se confía en nada. */
+export async function riffFromHash(hash) {
+  const m = /[#&]riff=([zj])([A-Za-z0-9_-]+)/.exec(hash || '');
+  if (!m || m[2].length > 200000) return null;
+  try {
+    let bytes = b64.dec(m[2]);
+    if (m[1] === 'z') bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
+    const d = JSON.parse(new TextDecoder().decode(bytes));
+    const res = d.res === 16 ? 16 : 8;
+    if (!Array.isArray(d.bars) || !d.bars.length || d.bars.length > 600) return null;
+    const bars = d.bars.map(bar => {
+      if (!Array.isArray(bar) || bar.length !== res) throw new Error('compás');
+      return bar.map(st => {
+        if (st === 'r') return 'r';
+        if (Array.isArray(st) && Number.isInteger(st[0]) && st[0] >= 0 && st[0] <= 3 &&
+          Number.isInteger(st[1]) && st[1] >= 0 && st[1] <= 24) return [st[0], st[1]];
+        return 0;
+      });
+    });
+    return {
+      id: 'r' + Date.now(),
+      name: String(d.name || 'Riff compartido').slice(0, 50),
+      tempo: Math.max(40, Math.min(200, Math.round(+d.tempo) || 100)),
+      style: STYLES[d.style] ? d.style : 'metro',
+      res, chords: String(d.chords || '').slice(0, 6000), bars,
+    };
+  } catch (e) { return null; }
+}
+
+export function initRiffs(root, { store, engine, getLatin, onPlay, notify = () => {} }) {
   const $ = s => root.querySelector(s);
   const S = store.data;
   if (!S.riffs) S.riffs = [exampleRiff()];
@@ -272,6 +318,28 @@ export function initRiffs(root, { store, engine, getLatin, onPlay }) {
   };
   $('#riffPlay').onclick = () => onPlay(cur);
   $('#riffClose').onclick = () => { cur = null; $('#riffEditor').hidden = true; renderList(); };
+  // En el iPad, la app instalada no comparte datos con Safari: aquí se pega el enlace recibido.
+  $('#riffPaste').onclick = async () => {
+    let text = '';
+    try { text = await navigator.clipboard.readText(); } catch (e) { /* sin permiso para leer el portapapeles */ }
+    if (!/riff=/.test(text)) text = prompt('Pega aquí el enlace del riff que te han enviado:') || '';
+    if (!text.trim()) return;
+    const riff = await riffFromHash(text.replace(/^[^#]*/, '') || '#' + text);
+    if (!riff) { notify('Ese enlace no contiene un riff válido.'); return; }
+    notify(api.add(riff) ? `«${riff.name}» añadido a Mis riffs.` : `«${riff.name}» ya estaba en Mis riffs.`);
+  };
+  $('#riffShare').onclick = async () => {
+    const url = await riffToLink(cur);
+    const text = `Riff de bajo «${cur.name}» para Cuatro Cuerdas`;
+    try {
+      if (navigator.share) { await navigator.share({ title: cur.name, text, url }); return; }
+      await navigator.clipboard.writeText(url);
+      notify('Enlace copiado. Pégalo en un mensaje para enviarlo.');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // se cerró el menú de compartir
+      prompt('Copia este enlace y envíalo:', url);
+    }
+  };
   $('#riffDelete').onclick = () => {
     if (!confirm(`¿Borrar «${cur.name}»? No se puede deshacer.`)) return;
     S.riffs = S.riffs.filter(r => r !== cur);
@@ -285,8 +353,16 @@ export function initRiffs(root, { store, engine, getLatin, onPlay }) {
   for (const [id, st] of Object.entries(STYLES)) sel.appendChild(new Option(`Batería de ${st.name}`, id));
 
   renderList();
-  return {
+  const api = {
     render() { renderList(); if (cur) renderBars(); },
+    /** Añade un riff recibido por enlace (si no está ya) y lo abre. */
+    add(riff) {
+      const same = S.riffs.find(r => r.name === riff.name && JSON.stringify(r.bars) === JSON.stringify(riff.bars));
+      if (!same) { S.riffs.unshift(riff); save(); }
+      open(same || riff);
+      return !same;
+    },
     edit(id) { const r = S.riffs.find(x => x.id === id); if (r) open(r); },
   };
+  return api;
 }

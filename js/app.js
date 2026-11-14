@@ -7,7 +7,7 @@ import { initGame } from './fretgame.js';
 import { initTuner } from './tuner.js';
 import { LIBRARY, makeExercise, exerciseTitle, routineFor, dayNumber } from './exercises.js';
 import { SONGS, GENRES, songPreset } from './songs.js';
-import { initRiffs, riffSong } from './riffs.js';
+import { initRiffs, riffSong, riffFromHash } from './riffs.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -753,7 +753,7 @@ engine.tempo = S.tempo; engine.loop = S.loop; engine.countIn = S.countIn;
 engine.muteBass = S.mute; engine.vol = S.vol;
 fillPresets(); fillKeys(); fillStyles(); fillLibrary(); renderRamp();
 board = createFretboard($('#nowBoard'), { frets: 12, latin: S.latin });
-const riffs = initRiffs($('#view-riffs'), { store, engine, getLatin: () => S.latin, onPlay: playRiff });
+const riffs = initRiffs($('#view-riffs'), { store, engine, getLatin: () => S.latin, onPlay: playRiff, notify: toast });
 const game = initGame($('#view-diapason'), engine, store, () => S.latin);
 const tuner = initTuner($('#view-afinador'), engine, () => S.latin);
 if (!S.text) { const p = findPreset('blues12'); S.text = realize(p.roman, p.key); }
@@ -764,3 +764,16 @@ renderStreak();
 renderToday();
 renderSongs();
 requestAnimationFrame(frame);
+
+// ---------- riff recibido por enlace ----------
+async function openSharedRiff() {
+  if (!/[#&]riff=/.test(location.hash)) return;
+  const riff = await riffFromHash(location.hash);
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!riff) { toast('El enlace del riff no es válido o está incompleto.'); return; }
+  showView('riffs');
+  toast(riffs.add(riff) ? `«${riff.name}» añadido a Mis riffs.` : `«${riff.name}» ya estaba en Mis riffs.`);
+}
+openSharedRiff();
+window.addEventListener('hashchange', openSharedRiff);
+
